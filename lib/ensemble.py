@@ -1,23 +1,18 @@
 import tensorflow as tf
-from Discriminator import CellCnn
+from lib.discriminator import CellCnn
 
 
-class CellCnn_Ensemble(object):
+class CellCnnEnsemble(object):
 
     """
-       Creates an object of class CellCnn_Ensemble
+       Creates an object of class CellCnnEnsemble, which is the discriminator for CellGan
 
        Args:
-           - ncell: int
-               Number of cells per multi-cell input
 
-           - nmark: int
-               Number of markers used in the experiment
+           - d_filters: list
+               Number of filters for each of the CellCnns in the ensemble
 
-           - nfilters: list
-               Number of filters in the corresponding CellCnn
-
-           - npooled: list
+           - d_pooled: list
                Number of cells pooled in the corresponding CellCnn
 
            - coeff_l1: float
@@ -29,10 +24,7 @@ class CellCnn_Ensemble(object):
            - coeff_act: float
                Coefficient of the activity regularizer
 
-           - dropout: str
-               Whether dropout is used
-
-           - dropout_p: float
+           - dropout_prob: float
                dropout rate
 
            - init_method: str
@@ -40,78 +32,66 @@ class CellCnn_Ensemble(object):
 
        """
 
-    def __init__(self, ncell, nmark, nfilters, npooled, coeff_l1,
-                 coeff_l2, coeff_act, dropout_p, init_method):
+    def __init__(self, d_filters, d_pooled, coeff_l1, coeff_l2, coeff_act, dropout_prob, init_method):
 
-        self.input_features = dict()
-        self.input_features['ncell'] = ncell
-        self.input_features['nmark'] = nmark
-
+        # Add CellCnnEnsemble hyperparameters
         self.hparams = dict()
-        self.hparams['nfilters'] = nfilters
-        self.hparams['npooled'] = npooled
+        self.hparams['d_filters'] = d_filters
+        self.hparams['d_pooled'] = d_pooled
         self.hparams['coeff_l1'] = coeff_l1
         self.hparams['coeff_l2'] = coeff_l2
         self.hparams['coeff_act'] = coeff_act
-        self.hparams['dropout_p'] = dropout_p
+        self.hparams['dropout_prob'] = dropout_prob
 
         self.inits = init_method
-        self._setup_ensemble()
+        self._initialize_ensemble()
 
-    def _setup_ensemble(self):
+    def _initialize_ensemble(self):
 
-        """ Setup of the ensemble of CellCnns """
+        """
+        Initialize each CellCnn in the ensemble
+        """
 
         self.CellCnns = dict()
 
-        for i in range(len(self.hparams['nfilters'])):
+        for i in range(len(self.hparams['d_filters'])):
 
             scope_name = "CellCnn_" + str(i+1)
 
             self.CellCnns[i] = CellCnn(
-                ncell=self.input_features['ncell'],
-                nmark=self.input_features['nmark'],
-                dfilter=self.hparams['nfilters'][i],
-                npooled=self.hparams['npooled'][i],
+                num_filters=self.hparams['num_filters'][i],
+                num_pooled=self.hparams['num_pooled'][i],
                 scope_name=scope_name,
                 init_method=self.inits,
                 coeff_l1=self.hparams['coeff_l1'],
                 coeff_l2=self.hparams['coeff_l2'],
                 coeff_act=self.hparams['coeff_act'],
-                dropout_p=self.hparams['dropout_p']
+                dropout_prob=self.hparams['dropout_prob']
             )
 
-    def _eval_ensemble(self, inputs, reuse):
+    def _build_ensemble(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
 
         """
-        Produces the output of the ensemble of CellCnns
+        Setup the architecture of each CellCnn and return fake/real scores for inputs,
+        when invoked the first time. Reuses existing architecture and returns scores, otherwise.
+        The scores are returned as a dictionary where the index of CellCnn is the key.
 
-        Inputs
-        ------
-
-        inputs:     tensor, (batch_size, ncell, nmark)
-                    - Multi cell inputs
-
-        reuse:      bool
-                    - Indicates whether defined variables need
-                    to be reused
-
-        Returns
-        -------
-
-        outputs:    dict, keys are the CellCnn indices
-                    - Contains the dictionary of outputs from
-                    each CellCnn
+        :param inputs: :param inputs: tensor of shape (batch_size, n_cells, n_markers)
+        :param reuse: bool/reuse object, indicates if the existing architecture and params to be used
+        :param print_shape: bool, indicates whether to print the shape for every CellCnn
+        :return: fake/real scores for inputs, in a dictionary with CellCnn index as key.
         """
 
         self.outputs = dict()
 
-        with tf.variable_scope("Ensemble", reuse=reuse):
+        with tf.variable_scope("CellCnnEnsemble", reuse=reuse):
 
             for i in self.CellCnns:
 
                 self.outputs[i] = self.CellCnns[i].build_disc(
                     inputs=inputs,
-                    reuse=reuse)
+                    reuse=reuse,
+                    print_shape=print_shape
+                )
 
         return self.outputs

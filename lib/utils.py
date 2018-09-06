@@ -1,7 +1,8 @@
 
 import tensorflow as tf
 import numpy as np
-import os, json
+import os
+import json
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -11,72 +12,116 @@ xav_init = tf.contrib.layers.xavier_initializer
 normal_init = tf.truncated_normal_initializer
 zero_init = tf.zeros_initializer
 
+# Different methods for initializing the data
 initializers = dict()
 initializers['xavier'] = xav_init
 initializers['normal'] = normal_init
 initializers['zeros'] = zero_init
 
 
-def getFilters(nCellCnns, low, high):
+def get_filters(num_cell_cnns, low, high):
 
-    low = low
-    high = high
+    """
+    Get a list of number of filters to be used for the CellCnn Ensemble.
+    The filters are chosen randomly between limits specified by low and high
 
-    filters = np.random.randint(low=low, high=high, size=nCellCnns)
+    :param num_cell_cnns: int, number of CellCnns in the ensemble
+    :param low: int, minimum permissible number of filters for a CellCnn
+    :param high: int, maximum permissible number of filters for a CellCnn
+    :return: filters, a numpy array of size num_cell_cnns
+    """
+
+    filters = np.random.randint(low=low, high=high, size=num_cell_cnns)
 
     return filters
 
 
-def getNpooled(nfilters, ncell):
+def get_num_pooled(num_cell_cnns, num_cells_per_input):
 
-    nPooled = [np.random.randint(low=1, high=ncell) for _ in range(nfilters)]
+    """
+    Returns a list of number of cells to be pooled
 
-    return nPooled
+    :param num_cell_cnns: int, number of CellCnns in the ensemble
+    :param num_cells_per_input: int, number of cells per multi-cell input
+    :return: num_pooled, a numpy array of size num_cell_cnns
+    """
 
+    num_pooled = np.random.randint(low=1, high=num_cells_per_input, size=num_cell_cnns)
 
-def sample_z(shape):
-
-    noise = list()
-
-    for _ in range(shape[0]):
-
-        noise.append(np.random.multivariate_normal(
-            mean=np.zeros(shape=shape[-1]),
-            cov=np.eye(shape[-1]),
-            size=shape[1]))
-
-    return np.array(noise)
+    return num_pooled
 
 
-def build_real_data(n_sub, n_cells, weight_sub, n_mark):
+def sample_z(batch_size, num_cells_per_input, noise_size):
+    
+    """
+    Generates noise, which is input to the generator based on given shape
+    :param batch_size: int, mini-batch size
+    :param num_cells_per_input: int, number of cells per multi-cell input
+    :param noise_size: int, noise dimension 
+    :return: noise, a numpy array of shape (batch_size, num_cells, noise_size)
+    """
+
+    noise = np.random.multivariate_normal(
+        mean=np.zeros(shape=noise_size),
+        cov=np.eye(N=noise_size),
+        size=(batch_size, num_cells_per_input)
+    )
+
+    return noise
+
+
+def build_gaussian_training_set(num_subpopulations, num_cells, weight_sub_populations, num_markers, shuffle=False):
+    
+    """
+    Build a training set of desired number of subpopulations and number of cells in the training set.
+    The number of markers and the weights of the subpopulations are also specified. Returns each cell's
+    marker profile and the subpopulation it belongs to 
+    
+    :param num_subpopulations: int, number of subpopulations in the data
+    :param num_cells: int, total number of cells in the 
+    :param weight_sub_populations: list of floats, weights of different subpopulations
+    :param num_markers: int, number of markers per cell measured
+    :param shuffle: bool, default false, whether to shuffle the training set
+    :return: data, y_sub_populations
+    """
 
     means = list()
     sd = list()
 
-    for i in range(n_sub):
-        means.append(np.random.choice(range(1, 5), n_mark, replace=True))
-        sd.append(np.random.sample(n_mark))
+    for i in range(num_subpopulations):
+        means.append(np.random.choice(range(1, 5), num_markers, replace=True))
+        sd.append(np.random.sample(num_markers))
 
     data = list()
-    y_subpop = list()
-    for i in range(n_sub):
-        temp_n_cells = int(n_cells * weight_sub[i])
-        data.append(np.random.normal(means[i], sd[i], (temp_n_cells, n_mark)))
-        y_subpop.append([i + 1] * temp_n_cells)
+    y_sub_populations = list()
+    
+    for i in range(num_subpopulations):
+        temp_num_cells = int(num_cells * weight_sub_populations[i])
+        data.append(np.random.normal(means[i], sd[i], (temp_num_cells, num_markers)))
+        y_sub_populations.append([i + 1] * temp_num_cells)
     data = np.vstack(data)
-    y_subpop = np.concatenate(y_subpop)
+    y_sub_populations = np.concatenate(y_sub_populations)
+    
+    if shuffle:
+        ind_shuffle = np.random.choice(range(num_cells), num_cells, replace=False)
+        data = data[ind_shuffle, :]
+        y_sub_populations = y_sub_populations[ind_shuffle]
 
-    # ind_shuffle = np.random.choice(range(n_cells), n_cells, replace=False)
-    # data = data[ind_shuffle, :]
-    # y_subpop = y_subpop[ind_shuffle]
-
-    return data, y_subpop
+    return data, y_sub_populations
 
 
-def generate_random_subset(inputs, ncell, batch_size):
+def generate_random_subset(inputs, num_cells_per_input, batch_size):
 
-    shape = inputs.shape[0]
-    indices = [np.random.choice(range(shape), ncell, replace=False)
+    """
+    Returns a random subset from input data of shape (batch_size, num_cells_per_input, num_markers)
+    :param inputs: numpy array, the input ndarray to sample from
+    :param num_cells_per_input: int, number of cells per multi-cell input
+    :param batch_size: int, batch size of the subset
+    :return:
+    """
+
+    num_cells_total = inputs.shape[0]
+    indices = [np.random.choice(range(num_cells_total), num_cells_per_input, replace=False)
                for i in range(batch_size)]
 
     subset = [inputs[index, ] for index in indices]
@@ -84,10 +129,19 @@ def generate_random_subset(inputs, ncell, batch_size):
     return np.array(subset), indices
 
 
-def getBatches(inputs, batch_size, n_batches, ncell):
+def get_batches(inputs, batch_size, num_batches, num_cells_per_input):
 
-    batches = [generate_random_subset(inputs=inputs, ncell=ncell, batch_size=batch_size)
-               for _ in range(n_batches)]
+    """
+    Generate multiple batches of training data from given inputs
+    :param inputs: input numpy array of shape (num_cells, num_markers)
+    :param batch_size: int, batch_size of each batch generated
+    :param num_batches: int, number of batches of training data to generate
+    :param num_cells_per_input: int, number of cells per multi-cell input
+    :return:
+    """
+
+    batches = [generate_random_subset(inputs=inputs, num_cells_per_input=num_cells_per_input, batch_size=batch_size)
+               for _ in range(num_batches)]
     return batches
 
 
@@ -149,7 +203,15 @@ def pca_plot(out_dir, real_data, fake_data, it, real_subs, experts):
         plt.close()
 
 
-def writeHparamsToFile(out_dir, hparams):
+def write_hparams_to_file(out_dir, hparams):
+
+    """
+    Writes hyperparameters used in experiment to specified output directory
+
+    :param out_dir: str, directory name
+    :param hparams: dictionary, keys as hyperparameter names
+    :return: no returns
+    """
 
     filename = os.path.join(out_dir, 'Hparams.txt')
 
@@ -158,9 +220,17 @@ def writeHparamsToFile(out_dir, hparams):
         f.write(json.dumps(hparams))
 
 
-def saveLossPlot(dir_output, disc_loss, gen_loss):
+def save_loss_plot(out_dir, disc_loss, gen_loss):
 
-    filename = os.path.join(dir_output, '_loss_plot.jpg')
+    """
+    Saves loss plot to output directory
+    :param out_dir: str, output directory
+    :param disc_loss: list, discriminator losses
+    :param gen_loss: list, generator losses
+    :return: no returns
+    """
+
+    filename = os.path.join(out_dir, 'loss_plot.jpg')
     plt.plot(range(len(disc_loss)), disc_loss, 'r', label='Discriminator Loss')
     plt.plot(range(len(gen_loss)), gen_loss, 'b', label='Generator Loss')
     plt.legend()
