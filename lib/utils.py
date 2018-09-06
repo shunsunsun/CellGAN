@@ -70,7 +70,7 @@ def sample_z(batch_size, num_cells_per_input, noise_size):
     return noise
 
 
-def build_gaussian_training_set(num_subpopulations, num_cells, weight_sub_populations, num_markers, shuffle=False):
+def build_gaussian_training_set(num_subpopulations, num_cells, weights_subpopulations, num_markers, shuffle=False):
     
     """
     Build a training set of desired number of subpopulations and number of cells in the training set.
@@ -79,7 +79,7 @@ def build_gaussian_training_set(num_subpopulations, num_cells, weight_sub_popula
     
     :param num_subpopulations: int, number of subpopulations in the data
     :param num_cells: int, total number of cells in the 
-    :param weight_sub_populations: list of floats, weights of different subpopulations
+    :param weights_subpopulations: list of floats, weights of different subpopulations
     :param num_markers: int, number of markers per cell measured
     :param shuffle: bool, default false, whether to shuffle the training set
     :return: data, y_sub_populations
@@ -96,7 +96,7 @@ def build_gaussian_training_set(num_subpopulations, num_cells, weight_sub_popula
     y_sub_populations = list()
     
     for i in range(num_subpopulations):
-        temp_num_cells = int(num_cells * weight_sub_populations[i])
+        temp_num_cells = int(num_cells * weights_subpopulations[i])
         data.append(np.random.normal(means[i], sd[i], (temp_num_cells, num_markers)))
         y_sub_populations.append([i + 1] * temp_num_cells)
     data = np.vstack(data)

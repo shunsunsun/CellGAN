@@ -163,7 +163,7 @@ class CellGan(object):
         :return: output, a tensor of expected shape (batch_size, num_cells_per_input, num_markers)
         """
 
-        output = self.generator.build_gen(inputs=self.Z, train=self.train, reuse=reuse)
+        output = self.generator.build_gen(inputs=self.Z, train=self.hparams['train'], reuse=reuse)
 
         return output
 
@@ -270,11 +270,11 @@ class CellGan(object):
 
         self.d_params = tf.get_collection(
             key=tf.GraphKeys.GLOBAL_VARIABLES,
-            scope="Ensemble")
+            scope="CellCnnEnsemble")
 
         self.g_params = tf.get_collection(
             key=tf.GraphKeys.GLOBAL_VARIABLES,
-            scope="CellGan_gen")
+            scope="CellGanGen")
 
     def _solvers(self):
 

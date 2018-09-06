@@ -59,8 +59,8 @@ class CellCnnEnsemble(object):
             scope_name = "CellCnn_" + str(i+1)
 
             self.CellCnns[i] = CellCnn(
-                num_filters=self.hparams['num_filters'][i],
-                num_pooled=self.hparams['num_pooled'][i],
+                num_filters=self.hparams['d_filters'][i],
+                num_pooled=self.hparams['d_pooled'][i],
                 scope_name=scope_name,
                 init_method=self.inits,
                 coeff_l1=self.hparams['coeff_l1'],

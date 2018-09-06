@@ -1,12 +1,11 @@
 
 import numpy as np
 import tensorflow as tf
-from utils import build_real_data, sample_z
-from utils import pca_plot, generate_random_subset
-from utils import writeHparamsToFile, saveLossPlot
-from utils import getFilters, getNpooled
-# from utils import getBatches
-from model import CellGan
+from lib.utils import build_gaussian_training_set, sample_z
+from lib.utils import pca_plot, generate_random_subset
+from lib.utils import save_loss_plot, write_hparams_to_file
+from lib.utils import get_filters, get_num_pooled
+from lib.model import CellGan
 import os
 import sys
 import logging
@@ -37,14 +36,14 @@ if not os.path.exists(output_dir):
 # Real data parameters
 # --------------------
 
-n_subpopulations = 14
+num_subpopulations = 14
 
 weights_subpopulations = np.array([0.007, 0.110, 0.026, 0.375, 0.118, 0.012, 0.01, 0.005,
                                    0.179, 0.002, 0.019, 0.125, 0.007, 0.005])
 
 weights_subpopulations = weights_subpopulations/weights_subpopulations.sum()
-n_markers = 10
-n_cells_total = 40000
+num_markers = 10
+num_cells_total = 40000
 
 # ------------------
 # CellGan parameters
@@ -52,33 +51,33 @@ n_cells_total = 40000
 
 noise_size = 100
 batch_size = 100
-ncell = 100
+num_cells_per_input = 100
 
 moe_sizes = [100, 100]
 num_experts = 14
-n_top = 1
+num_top = 1
 
-nCellCnns = 30
-gfilter = 20
-maxFilter = 10
-minFilter = 7
+num_cell_cnns = 30
+num_filter_generator = 20
+max_num_filter = 10
+min_num_filter = 7
 
-dfilters = getFilters(nCellCnns=nCellCnns, low=minFilter, high=maxFilter)
-npooled = getNpooled(nfilters=nCellCnns, ncell=ncell)
+disc_filters = get_filters(num_cell_cnns=num_cell_cnns, low=min_num_filter, high=max_num_filter)
+disc_pooled = get_num_pooled(num_cell_cnns=num_cell_cnns, num_cells_per_input=num_cells_per_input)
 
 learning_rate = 2e-4
 train = True
 
 # GAN and Optimizer Parameters
 
-beta1 = 0.9
-beta2 = 0.999
+beta_1 = 0.9
+beta_2 = 0.999
 reg_lambda = 5
-typeGAN = 'WGAN'
+type_gan = 'wgan'
 
-if typeGAN == 'WGAN-GP':
+if type_gan == 'wgan-gp':
     n_critic = 3
-elif typeGAN == 'WGAN':
+elif type_gan == 'wgan':
     n_critic = 2
 else:
     n_critic = 1
@@ -87,23 +86,21 @@ else:
 # Get Real Data
 # -------------
 
-real_data, real_y_sub = build_real_data(
-    n_sub=n_subpopulations,
-    n_cells=n_cells_total,
-    n_mark=n_markers,
-    weight_sub=weights_subpopulations
+real_data, real_y_sub = build_gaussian_training_set(
+    num_subpopulations=num_subpopulations,
+    num_cells=num_cells_total,
+    num_markers=num_markers,
+    weights_subpopulations=weights_subpopulations
 )
 
 # -----------------
 # Build the CellGan
 # -----------------
 
-model = CellGan(noise_size=noise_size, batch_size=batch_size,
-                moe_sizes=moe_sizes, num_experts=num_experts,
-                ncell=ncell, nmark=n_markers, gfilter=gfilter,
-                dfilters=dfilters, lr=learning_rate,
-                train=train, beta2=beta2, n_top=n_top, npooled=npooled,
-                reg_lambda=reg_lambda, beta1=beta1, typeGAN=typeGAN)
+model = CellGan(noise_size=noise_size, moe_sizes=moe_sizes, batch_size=batch_size,
+                num_markers=num_markers, d_pooled=disc_pooled, num_experts=num_experts, g_filters=num_filter_generator,
+                d_filters=disc_filters, num_top=num_top, type_gan=type_gan, reg_lambda=reg_lambda,
+                beta_1=beta_1, beta_2=beta_2, init_method='xavier')
 
 # ----------------------------------
 # Write hyperparameters to text file
@@ -114,23 +111,22 @@ moe_in_size = model.generator.get_moe_input_size()
 hparams = {
     'noise_size': noise_size,
     'num_experts': num_experts,
-    'n_top': n_top,
+    'n_top': num_top,
     'learning_rate': learning_rate,
-    'moe_sizes': [moe_in_size] + moe_sizes + [n_markers],
-    'gfilter': gfilter,
-    'beta1': beta1,
-    'beta2': beta2,
+    'moe_sizes': [moe_in_size] + moe_sizes + [num_markers],
+    'gfilter': num_filter_generator,
+    'beta_1': beta_1,
+    'beta_2': beta_2,
     'reg_lambda': reg_lambda,
     'n_critic': n_critic,
-    'ncell': ncell,
-    'nCellCnns': nCellCnns,
-    'typeGAN': typeGAN,
-    'minFilter': maxFilter,
-    'maxFilter': minFilter,
+    'num_cell_per_input': num_cells_per_input,
+    'num_cell_cnns': num_cell_cnns,
+    'type_gan': type_gan,
+    'min_num_filter': min_num_filter,
+    'max_num_filter': min_num_filter,
     'batch_size': batch_size
 }
 
-# Add flag for reinitialize
 
 # -----------------------------------
 # Logger Properties
@@ -149,11 +145,11 @@ logger.propagate = False
 logger.info("Experiment Name: " + experiment_name + '\n')
 
 logger.info("Starting our experiments "
-            "with {} subpopulations \n".format(n_subpopulations))
+            "with {} subpopulations \n".format(num_subpopulations))
 logger.info("Number of filters "
-            "in the CellCnn Ensemble are: {}".format(dfilters))
+            "in the CellCnn Ensemble are: {}".format(disc_filters))
 logger.info("number of Cells Pooled in "
-            "the CellCnn Ensemble are: {} \n".format(npooled))
+            "the CellCnn Ensemble are: {} \n".format(disc_pooled))
 logger.info("The subpopulation weights are {} \n".format(weights_subpopulations))
 
 
@@ -161,21 +157,8 @@ logger.info("The subpopulation weights are {} \n".format(weights_subpopulations)
 # Training the GAN
 # ----------------
 
-D_loss = list()
-G_loss = list()
-
-
-# n_batches = 10
-# train_batches = getBatches(inputs=real_data, batch_size=batch_size,
-#                            ncell=ncell, n_batches=n_batches)
-
-
-def getNextBatch(index):
-
-    global train_batches
-
-    return train_batches[index]
-
+discriminator_loss = list()
+generator_loss = list()
 
 num_iter = 10000
 
@@ -183,10 +166,9 @@ with tf.Session() as sess:
 
     sess.run(tf.global_variables_initializer())
 
-    writeHparamsToFile(
-        dir_output=output_dir,
+    write_hparams_to_file(
+        out_dir=output_dir,
         hparams=hparams,
-        run=test
     )
 
     for it in range(num_iter):
@@ -201,14 +183,15 @@ with tf.Session() as sess:
 
             train_real, _ = generate_random_subset(
                 inputs=real_data,
-                ncell=ncell,
+                num_cells_per_input=num_cells_per_input,
                 batch_size=batch_size
             )
 
-            z_shape = [batch_size, ncell, noise_size]
-            noise = sample_z(shape=z_shape)
+            z_shape = [batch_size, num_cells_per_input, noise_size]
+            noise = sample_z(batch_size=batch_size, num_cells_per_input=num_cells_per_input,
+                             noise_size=noise_size)
 
-            if model.typeGAN == 'WGAN':
+            if model.hparams['type_gan'] == 'wgan':
 
                 fetches = [
                     model.d_solver, model.d_loss,
@@ -251,25 +234,22 @@ with tf.Session() as sess:
         #     batch_size=batch_size
         # )
 
-        z_shape = [batch_size, ncell, noise_size]
-        noise = sample_z(shape=z_shape)
+        noise = sample_z(batch_size=batch_size, num_cells_per_input=num_cells_per_input,
+                         noise_size=noise_size)
 
-        fetches = [
-            model.g_solver, model.g_loss, model.experts_used,
-            model.generator.moe_loss
-        ]
+        fetches = [model.g_solver, model.g_loss, model.generator.moe_loss]
 
         feed_dict = {
             model.Z: noise,
             model.X: train_real
         }
 
-        _, g_loss, ngates, moe_loss = sess.run(
+        _, g_loss, moe_loss = sess.run(
             fetches, feed_dict=feed_dict
         )
 
-        D_loss.append(d_loss)
-        G_loss.append(g_loss)
+        discriminator_loss.append(d_loss)
+        generator_loss.append(g_loss)
 
         # ----------------------------------------
         # PCA Plotting of samples
@@ -292,8 +272,9 @@ with tf.Session() as sess:
             # Fake Data
             # ---------
 
-            n_samples = 1000
-            input_noise = sample_z(shape=[1, n_samples, noise_size])
+            num_samples = 1000
+            input_noise = sample_z(batch_size=1, num_cells_per_input=num_samples,
+                                   noise_size=noise_size)
 
             fetches = [model.g_sample, model.generator.gates]
             feed_dict = {
@@ -305,7 +286,7 @@ with tf.Session() as sess:
                 feed_dict=feed_dict
             )
 
-            test_fake = test_fake.reshape(n_samples, n_markers)
+            test_fake = test_fake.reshape(num_samples, num_markers)
 
             experts = np.argmax(gates, axis=1)
             experts_used = len(np.unique(experts))
@@ -317,28 +298,18 @@ with tf.Session() as sess:
             # Real Data
             # ---------
 
-            test_real, indices = generate_random_subset(inputs=real_data,
-                                                ncell=n_samples,
-                                                batch_size=1)
+            test_real, indices = generate_random_subset(inputs=real_data, num_cells_per_input=num_samples,
+                                                        batch_size=1)
 
-            test_real = test_real.reshape(n_samples, n_markers)
+            test_real = test_real.reshape(num_samples, num_markers)
             indices = np.reshape(indices, test_real.shape[0])
-            subs_real = real_y_sub[indices]
+            real_subs = real_y_sub[indices]
 
-            pca_plot(
-                dir_output=output_dir,
-                real_data=test_real,
-                fake_data=test_fake,
-                experts=experts,
-                subs_real=subs_real,
-                it=it
-            )
+            # pca_plot(out_dir=output_dir, real_data=test_real, fake_data=test_fake,
+            #         experts=experts, real_subs=real_subs, it=it)
 
-            saveLossPlot(
-                dir_output=output_dir,
-                disc_loss=D_loss,
-                gen_loss=G_loss
-            )
+            save_loss_plot(out_dir=output_dir, disc_loss=discriminator_loss,
+                           gen_loss=generator_loss)
 
             model_path = output_dir + 'model' + str(test) + '.ckpt'
 
