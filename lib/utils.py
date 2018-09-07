@@ -19,6 +19,10 @@ initializers['normal'] = normal_init
 initializers['zeros'] = zero_init
 
 
+def f_trans(x, c):
+    return np.arcsinh(1./c * x)
+
+
 def get_filters(num_cell_cnns, low, high):
 
     """
