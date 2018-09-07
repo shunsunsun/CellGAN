@@ -7,12 +7,9 @@ import sys
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT_DIR)
 
-import time
-import datetime
-import pandas as pd
-from lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
+from lib.utils import get_filters, get_num_pooled, write_hparams_to_file
 from lib.utils import generate_random_subset, sample_z
-from lib.preprocessing import extract_marker_indices, read_fcs_data
+from lib.utils import build_gaussian_training_set
 from lib.model import CellGan
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -23,16 +20,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # IO parameters
-    parser.add_argument('-f', '--fcs', dest='fcs_file', default='./data/fcs.csv',
-                        help='file containing names of .fcs files to be used for GAN training')
-
-    parser.add_argument('-m', '--markers', dest='marker_file', default='./data/markers.csv',
-                        help='Filename containing the markers of interest')
-
-    parser.add_argument('-i', '--in_dir', dest='input_dir', default='./data/AKTi',
-                        help='Directory containing the input .fcs files')
-
-    parser.add_argument('-o', '--out_dir', dest='output_dir', default='./data/tests/NK_test',
+    parser.add_argument('-o', '--out_dir', dest='output_dir', default='./data/tests/',
                         help='Directory where output will be generated.')
 
     parser.add_argument('-l', '--logging', dest='logging', default=True,
@@ -41,22 +29,24 @@ def main():
     parser.add_argument('-p', '--plot', dest='to_plot', action='store_true',
                         default=True, help='Whether to plot results')
 
-    # data processing
-    parser.add_argument('-a', '--arcsinh', dest='if_arcsinh', action='store_true',
-                        help='Whether to use arcsinh transformation on the data')
-
-    parser.add_argument('--sub_limit', dest='subpopulation_limit', type=int,
-                        default=30, help='Minimum number of cells to be called a subpopulation')
-
-    parser.add_argument('--cofactor', dest='cofactor', type=int, default=5,
-                        help='cofactor for the arcsinh transformation')
-
     # multi-cell input specific
     parser.add_argument('-b', '--batch_size', dest='batch_size',
-                        type=int, default=64, help='batch size used for training')
+                        type=int, default=100, help='batch size used for training')
 
     parser.add_argument('-nc', '--ncell', dest='num_cells_per_input', type=int,
                         default=100, help='Number of cells per multi-cell input')
+
+    parser.add_argument('-m', '--num_markers', type=int, default=10,
+                        help='Number of markers for which we want to generate profiles')
+
+    parser.add_argument('--num_cells', dest='num_cells', type=int,
+                        default=40000, help='Total number of cells in the training set')
+
+    parser.add_argument('--num_subpopulations', dest='num_subpopulations', type=int,
+                        default=10, help='Number of subpopulations')
+
+    parser.add_argument('-ws', '--weights_subs', dest='weight_subpopulations', type=list,
+                        default=[0.1]*10, help='Weights of different subpopulations')
 
     # Generator Parameters
     parser.add_argument('-ns', '--noise_size', dest='noise_size', type=int,
@@ -137,43 +127,16 @@ def main():
 
     args = parser.parse_args()
 
-    fcs_files_of_interest = list(pd.read_csv(args.fcs_file, sep=','))
-    markers_of_interest = list(pd.read_csv(args.marker_file, sep=','))
+    # Building the training set
 
-    # Add Data Loading Steps next here
+    training_data, training_labels = build_gaussian_training_set(
+        num_subpopulations=args.num_subpopulations,
+        num_cells=args.num_cells,
+        num_markers=args.num_markers,
+        weights_subpopulations=args.weight_subpopulations
+    )
 
-    print()
-    print('Starting to load and process the .fcs files...')
-    start_time = time.time()
-
-    training_data = list()
-
-    for file in fcs_files_of_interest:
-
-        file_path = os.path.join(args.input_dir, file.strip())
-        fcs_data = read_fcs_data(file_path=file_path)
-        marker_indices = extract_marker_indices(fcs_data=fcs_data, markers_of_interest=markers_of_interest)
-        num_cells_in_file = fcs_data.data.shape[0]
-
-        if args.if_arcsinh and num_cells_in_file >= args.sub_limit:
-            processed_data = np.squeeze(fcs_data.data[:, marker_indices])
-            processed_data = f_trans(processed_data, c=args.cofactor)
-
-        else:
-            processed_data = fcs_data.data[:, marker_indices]
-
-        training_data.append(processed_data)
-
-        print('File {} loaded and processed'.format(file))
-
-    print('Loading and processing completed.')
-    print('Time taken: ', datetime.timedelta(seconds=time.time() - start_time))
-    print()
-
-    # Initializing the CellGan model
-    # ------------------------------
-
-    training_data = np.vstack(training_data)
+    # Getting the number of filters and cells to be pooled for each CellCnn
 
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
                             high=args.d_filters_max)
@@ -181,10 +144,12 @@ def main():
     d_pooled = get_num_pooled(num_cell_cnns=args.num_cell_cnns,
                               num_cells_per_input=args.num_cells_per_input)
 
-    print('Building CellGan...')
+    # Building the CellGan
+
+    print('Building CellGan....')
 
     model = CellGan(noise_size=args.noise_size, moe_sizes=args.moe_sizes,
-                    batch_size=args.batch_size, num_markers=len(markers_of_interest),
+                    batch_size=args.batch_size, num_markers=args.num_markers,
                     num_experts=args.num_experts, g_filters=args.num_filters_generator,
                     d_filters=d_filters, d_pooled=d_pooled, coeff_l1=args.coeff_l1,
                     coeff_l2=args.coeff_l2, coeff_act=args.coeff_act, num_top=args.num_top,
@@ -198,12 +163,14 @@ def main():
 
     moe_in_size = model.generator.get_moe_input_size()
 
+    # Writing hyperparameters to dictionary for model loading later
+
     model_hparams = {
         'noise_size': args.noise_size,
         'num_experts': args.num_experts,
         'num_top': args.num_top,
         'learning_rate': args.learning_rate,
-        'moe_sizes': [moe_in_size] + args.moe_sizes + [len(markers_of_interest)],
+        'moe_sizes': [moe_in_size] + args.moe_sizes + [args.num_markers],
         'gfilter': args.num_filters_generator,
         'beta_1': args.beta_1,
         'beta_2': args.beta_2,
@@ -223,8 +190,6 @@ def main():
         os.makedirs(args.output_dir)
 
     write_hparams_to_file(out_dir=args.output_dir, hparams=model_hparams)
-
-    # TODO: Add logger properties
 
     # Training the GAN
 

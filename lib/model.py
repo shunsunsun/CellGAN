@@ -78,8 +78,8 @@ class CellGan(object):
     """
 
     def __init__(self, noise_size, moe_sizes, batch_size, num_markers=10, num_experts=3,
-                 g_filters=10, d_filters=[10], coeff_l1=0, coeff_l2=1e-4, coeff_act=0,
-                 d_pooled=[3], dropout_prob=0.5, lr=1e-4, num_top=1, noisy_gating=True,
+                 g_filters=10, d_filters=[10], d_pooled=[3], coeff_l1=0, coeff_l2=1e-4,
+                 coeff_act=0, dropout_prob=0.5, lr=1e-4, num_top=1, noisy_gating=True,
                  noise_eps=1e-2, beta_1=0.9, beta_2=0.999, reg_lambda=10, train=False,
                  init_method='xavier', type_gan='normal', load_balancing=False):
 
@@ -180,20 +180,15 @@ class CellGan(object):
         output = self.discriminator._build_ensemble(inputs=inputs, reuse=reuse)
         return output
 
-    def _calc_grad(self, inputs, reuse=tf.AUTO_REUSE):
+    def _calc_grad_norm(self, ys, xs):
 
         """
         Calculates the gradient, used in the wgan-gp loss formulation
-        :param inputs: input tensor (shape: batch_size, num_cells_per_input, num_markers)
-        :param reuse: bool/reuse object, indicating reuse of existing variables and parameters
+        :param ys: input tensor (shape: batch_size, num_cells_per_input, num_markers)
+        :param xs: bool/reuse object, indicating reuse of existing variables and parameters
         :return: no returns
         """
-
-        # Change this to include the CellCnn Ensemble and not the single CellCnn
-        self.grad = tf.gradients(
-            ys=self._eval_disc(inputs=inputs, reuse=reuse),
-            xs=[inputs])[0]
-
+        self.grad = tf.gradients(ys=ys, xs=[xs])[0]
         self.grad_norm = tf.sqrt(tf.reduce_sum(self.grad**2, axis=1))
 
     def _compute_loss(self):
@@ -249,12 +244,6 @@ class CellGan(object):
 
             self.d_loss = self.d_loss_fake - self.d_loss_real
 
-            # chosen_experts = tf.argmax(self.generator.gates, axis=1)
-            # unique_experts, _ = tf.unique(chosen_experts)
-
-            # self.experts_used = tf.reduce_sum(
-            #    tf.ones_like(unique_experts, dtype=tf.float32))
-
             if self.hparams['load_balancing']:
                 self.g_loss = -self.d_loss_fake + self.generator.moe_loss
             else:
@@ -262,8 +251,20 @@ class CellGan(object):
 
         elif self.hparams['type_gan'] == 'wgan-gp':
 
-            self.d_loss_fake = 0
             self.d_loss_real = 0
+            self.d_loss_fake = 0
+
+            epsilon = tf.random_uniform(shape=[self.batch_size], minval=0, maxval=1)
+            self.x_hat = epsilon*tf.transpose(self.X) + (1 - epsilon)*tf.transpose(self.g_sample)
+            self.x_hat = tf.transpose(self.x_hat)
+
+            self.d_x_hat = self._eval_disc(inputs=self.x_hat, reuse=tf.AUTO_REUSE)
+
+            for i in self.d_real:
+
+                self.grad_no
+
+
 
         else:
             raise NotImplementedError('Loss for GAN of type {} is not implemented'.format(self.hparams['type_gan']))
@@ -326,4 +327,3 @@ class CellGan(object):
 # TODO: Add the formulations for KL divergence, heat maps, pre-training clustering
 # TODO: Fix plotting issues
 # TODO: Make clip_value a parameter as well
-# TODO: Add command line parsing in the main file
