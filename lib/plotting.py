@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 
+# TODO: Fix plotting.py
 
 def pca_plot(out_dir, real_data, fake_data, it, real_subs, experts):
 

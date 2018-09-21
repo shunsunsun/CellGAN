@@ -16,6 +16,8 @@ initializers['xavier'] = xav_init
 initializers['normal'] = normal_init
 initializers['zeros'] = zero_init
 
+DEFAULT_SUBSET_SIZE = 20
+
 
 def f_trans(x, c):
     return np.arcsinh(1./c * x)
@@ -124,13 +126,13 @@ def get_batches(inputs, batch_size, num_batches, num_cells_per_input, weights=No
     :return:
     """
 
-    batches = [generate_random_subset(inputs=inputs, num_cells_per_input=num_cells_per_input,
-                                      batch_size=batch_size, weights=weights, return_indices=False)
+    batches = [generate_subset(inputs=inputs, num_cells_per_input=num_cells_per_input,
+                               batch_size=batch_size, weights=weights, return_indices=False)
                for _ in range(num_batches)]
     return batches
 
 
-def generate_random_subset(inputs, num_cells_per_input, batch_size, weights=None, return_indices=False):
+def generate_subset(inputs, num_cells_per_input, batch_size, weights=None, return_indices=False):
 
     """
     Returns a random subset from input data of shape (batch_size, num_cells_per_input, num_markers)
@@ -158,6 +160,37 @@ def generate_random_subset(inputs, num_cells_per_input, batch_size, weights=None
 
     else:
         return subset
+
+
+def compute_outlier_weights(inputs, method='q_sp'):
+
+    """
+    Returns the outlier weights computed for the inputs using the method specified
+    :param inputs: np.ndarray, dataset comprised of cells to be used for training
+    :param method: what method to use for outlier computation (default q_sp)
+    :return:
+    """
+
+    if method != 'q_sp':
+        raise NotImplementedError('Other outlier methods are not implemented currently')
+
+    else:
+        subset_size = DEFAULT_SUBSET_SIZE
+
+        if subset_size < inputs.shape[0]:
+            subset_indices = np.random.choice(inputs.shape[0], size=subset_size, replace=False)
+        else:
+            subset_indices = np.random.choice(inputs.shape[0], size=subset_size, replace=True)
+
+        sampled_subset = inputs[subset_indices, :]
+        dists = np.zeros(inputs.shape[0])
+
+        for index in range(len(dists)):
+            dists[index] = np.min(np.square(inputs[index] - sampled_subset))
+
+        outlier_weights = dists/dists.sum()
+
+        return outlier_weights
 
 
 def write_hparams_to_file(out_dir, hparams):
