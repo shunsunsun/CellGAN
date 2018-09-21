@@ -8,7 +8,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT_DIR)
 
 from lib.utils import get_filters, get_num_pooled, write_hparams_to_file
-from lib.utils import generate_random_subset, sample_z
+from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.utils import build_gaussian_training_set
 from lib.model import CellGan
 
@@ -44,9 +44,6 @@ def main():
 
     parser.add_argument('--num_subpopulations', dest='num_subpopulations', type=int,
                         default=10, help='Number of subpopulations')
-
-    parser.add_argument('-ws', '--weights_subs', dest='weight_subpopulations', type=list,
-                        default=[0.1]*10, help='Weights of different subpopulations')
 
     # Generator Parameters
     parser.add_argument('-ns', '--noise_size', dest='noise_size', type=int,
@@ -136,6 +133,8 @@ def main():
         weights_subpopulations=args.weight_subpopulations
     )
 
+    outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
+
     # Getting the number of filters and cells to be pooled for each CellCnn
 
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
@@ -210,26 +209,25 @@ def main():
 
             for _ in range(args.num_critic):
 
-                train_real, _ = generate_random_subset(inputs=training_data,
-                                                       num_cells_per_input=args.num_cells_per_input,
-                                                       batch_size=args.batch_size)
+                real_batch, _ = generate_subset(inputs=training_data,
+                                                num_cells_per_input=args.num_cells_per_input,
+                                                weights=outlier_scores,
+                                                batch_size=args.batch_size)
 
-                # TODO: Add better name instead of train_real
-
-                training_noise = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
-                                          num_cells_per_input=args.num_cells_per_input)
+                noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
+                                       num_cells_per_input=args.num_cells_per_input)
 
                 if args.type_gan == 'wgan':
 
                     fetches = [model.d_solver, model.d_loss, model.clip_D]
-                    feed_dict = {model.Z: training_noise, model.X: train_real}
+                    feed_dict = {model.Z: noise_batch, model.X: real_batch}
 
                     _, d_loss, _ = sess.run(fetches=fetches, feed_dict=feed_dict)
 
                 elif args.type_gan == 'normal':
 
                     fetches = [model.d_solver, model.d_loss]
-                    feed_dict = {model.Z: training_noise, model.X: train_real}
+                    feed_dict = {model.Z: noise_batch, model.X: real_batch}
 
                     _, d_loss = sess.run(fetches=fetches, feed_dict=feed_dict)
 
@@ -240,18 +238,16 @@ def main():
             # GENERATOR TRAINING
             # ------------------
 
-            training_noise = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
-                                      num_cells_per_input=args.num_cells_per_input)
+            noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
+                                   num_cells_per_input=args.num_cells_per_input)
 
             fetches = [model.g_solver, model.g_loss, model.generator.moe_loss]
-            feed_dict = {model.Z: training_noise, model.X: train_real}
+            feed_dict = {model.Z: noise_batch, model.X: real_batch}
 
             _, g_loss, moe_loss = sess.run(fetches=fetches, feed_dict=feed_dict)
 
             discriminator_loss.append(d_loss)
             generator_loss.append(g_loss)
-
-            # TODO: Add the plotting thing
 
             # if it % 100 == 0:
             #     model.set_train(False)

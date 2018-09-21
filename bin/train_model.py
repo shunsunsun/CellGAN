@@ -11,7 +11,7 @@ import time
 import datetime
 import pandas as pd
 from lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
-from lib.utils import generate_random_subset, sample_z
+from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.preprocessing import extract_marker_indices, read_fcs_data
 from lib.model import CellGan
 
@@ -140,7 +140,8 @@ def main():
     fcs_files_of_interest = list(pd.read_csv(args.fcs_file, sep=','))
     markers_of_interest = list(pd.read_csv(args.marker_file, sep=','))
 
-    # Add Data Loading Steps next here
+    # Data Loading Steps
+    # ------------------
 
     print()
     print('Starting to load and process the .fcs files...')
@@ -174,6 +175,7 @@ def main():
     # ------------------------------
 
     training_data = np.vstack(training_data)
+    outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
 
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
                             high=args.d_filters_max)
@@ -245,26 +247,25 @@ def main():
 
             for _ in range(args.num_critic):
 
-                train_real, _ = generate_random_subset(inputs=training_data,
-                                                       num_cells_per_input=args.num_cells_per_input,
-                                                       batch_size=args.batch_size)
+                real_batch, _ = generate_subset(inputs=training_data,
+                                                num_cells_per_input=args.num_cells_per_input,
+                                                weights=outlier_scores,
+                                                batch_size=args.batch_size)
 
-                # TODO: Add better name instead of train_real
-
-                training_noise = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
-                                          num_cells_per_input=args.num_cells_per_input)
+                noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
+                                       num_cells_per_input=args.num_cells_per_input)
 
                 if args.type_gan == 'wgan':
 
                     fetches = [model.d_solver, model.d_loss, model.clip_D]
-                    feed_dict = {model.Z: training_noise, model.X: train_real}
+                    feed_dict = {model.Z: noise_batch, model.X: real_batch}
 
                     _, d_loss, _ = sess.run(fetches=fetches, feed_dict=feed_dict)
 
                 elif args.type_gan == 'normal':
 
                     fetches = [model.d_solver, model.d_loss]
-                    feed_dict = {model.Z: training_noise, model.X: train_real}
+                    feed_dict = {model.Z: noise_batch, model.X: real_batch}
 
                     _, d_loss = sess.run(fetches=fetches, feed_dict=feed_dict)
 
@@ -275,11 +276,11 @@ def main():
             # GENERATOR TRAINING
             # ------------------
 
-            training_noise = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
-                                      num_cells_per_input=args.num_cells_per_input)
+            noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
+                                   num_cells_per_input=args.num_cells_per_input)
 
             fetches = [model.g_solver, model.g_loss, model.generator.moe_loss]
-            feed_dict = {model.Z: training_noise, model.X: train_real}
+            feed_dict = {model.Z: noise_batch, model.X: real_batch}
 
             _, g_loss, moe_loss = sess.run(fetches=fetches, feed_dict=feed_dict)
 
