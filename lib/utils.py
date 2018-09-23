@@ -20,6 +20,12 @@ DEFAULT_SUBSET_SIZE = 20
 
 
 def f_trans(x, c):
+    """
+    Computes a transformation of the input flow cytometry data for downstream analysis
+    :param x: np.ndarray, data from flow cytometry experiment
+    :param c: float, cofactor
+    :return: transformed data
+    """
     return np.arcsinh(1./c * x)
 
 
