@@ -22,7 +22,7 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
     :param num_experts: Number of experts used in the generator
     :param iteration: iteration no.
     :param zero_sub: Whether the subpopulation labels start with zero or one
-    :param pca: To add an additional plot with pca 
+    :param pca: To add an additional plot with pca
     :return:
     """
 
@@ -31,7 +31,7 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
     else:
         f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
 
-    best_KS_sum = np.inf
+    best_ks_sum = np.inf
 
     # TODO: Add the part for pca based plotting
 
@@ -57,7 +57,7 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
 
             real_data_by_sub = real_subset[indices, :]
 
-            KS_markers = list()
+            ks_markers = list()
 
             for marker in range(num_markers):
 
@@ -78,8 +78,8 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 w = np.ones_like(fake_data_by_expert)/float(len(fake_data_by_expert))
                 axes[sub, marker].hist(fake_data_by_expert, bins=bins, weights=w, label='F', normed=0, alpha=0.4)
 
-                KS = ks_2samp(fake_data_by_expert[:, marker], real_data_by_sub[:, marker])[0]
-                KS_markers.append(KS)
+                ks = ks_2samp(fake_data_by_expert[:, marker], real_data_by_sub[:, marker])[0]
+                ks_markers.append(ks)
 
                 axes[sub, marker].set_xlim([overall_min, overall_max])
                 ticks = np.linspace(overall_min, overall_max, num=5)
@@ -88,8 +88,8 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 axes[sub, marker].set_title('Marker {}'.format(marker))
                 axes[sub, marker].set_ylabel('Subpopulation {}'.format(sub))
 
-            if np.sum(KS_markers) <= best_KS_sum:
-                best_KS_sum = np.sum(KS_markers)
+            if np.sum(ks_markers) <= best_ks_sum:
+                best_ks_sum = np.sum(ks_markers)
                 best_sub = sub
 
             for marker in range(num_markers):
