@@ -5,6 +5,7 @@ import os
 import json
 
 import matplotlib.pyplot as plt
+import logging
 
 xav_init = tf.contrib.layers.xavier_initializer
 normal_init = tf.truncated_normal_initializer
@@ -214,6 +215,21 @@ def write_hparams_to_file(out_dir, hparams):
     with open(filename, 'w') as f:
 
         f.write(json.dumps(hparams))
+
+
+def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
+
+    log_file_name = out_dir + 'Output.log'
+    logger = logging.getLogger('CellGan')
+
+    handler = logging.FileHandler(log_file_name, mode='w')
+    formatter = logging.Formatter(logging_format)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(level)
+    logger.propagate = False
+
+    return logger
 
 
 def save_loss_plot(out_dir, disc_loss, gen_loss):
