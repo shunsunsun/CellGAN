@@ -73,10 +73,10 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 bins = np.linspace(overall_min, overall_max, num=30)
 
                 w = np.ones_like(real_data_by_sub)/float(len(real_data_by_sub))
-                axes[sub, marker].hist(real_data_by_sub, bins=bins, weights=w, label='R', normed=0, alpha=0.4)
+                axes[sub, marker].hist(real_data_by_sub, bins=bins, weights=w, label='R', normed=0, alpha=0.5)
 
                 w = np.ones_like(fake_data_by_expert)/float(len(fake_data_by_expert))
-                axes[sub, marker].hist(fake_data_by_expert, bins=bins, weights=w, label='F', normed=0, alpha=0.4)
+                axes[sub, marker].hist(fake_data_by_expert, bins=bins, weights=w, label='F', normed=0, alpha=0.5)
 
                 ks = ks_2samp(fake_data_by_expert[:, marker], real_data_by_sub[:, marker])[0]
                 ks_markers.append(ks)
