@@ -260,12 +260,6 @@ class CellGan(object):
 
             self.d_x_hat = self._eval_disc(inputs=self.x_hat, reuse=tf.AUTO_REUSE)
 
-            for i in self.d_real:
-
-                self.grad_no
-
-
-
         else:
             raise NotImplementedError('Loss for GAN of type {} is not implemented'.format(self.hparams['type_gan']))
 
