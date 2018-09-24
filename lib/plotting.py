@@ -26,13 +26,6 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
     :return:
     """
 
-    if pca:
-        f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers + 1, figsize=(30, 30))
-    else:
-        f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
-
-    best_ks_sum = np.inf
-
     # TODO: Add the part for pca based plotting
 
     dirname = os.path.join(out_dir, str((iteration // 100) + 1))
@@ -40,6 +33,13 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
         os.makedirs(dirname)
 
     for expert in range(num_experts):
+
+        if pca:
+            f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers + 1, figsize=(30, 30))
+        else:
+            f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
+
+        best_ks_sum = np.inf
 
         filename = os.path.join(dirname, 'Expert_' + str(expert + 1) + '.png')
 
@@ -50,10 +50,10 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
 
         for sub in range(num_subpopulations):
 
-            if not zero_sub:
-                indices = np.where(real_subset_labels == (sub + 1))[0]
-            else:
+            if zero_sub:
                 indices = np.where(real_subset_labels == sub)[0]
+            else:
+                indices = np.where(real_subset_labels == (sub + 1))[0]
 
             real_data_by_sub = real_subset[indices, :]
 
@@ -99,7 +99,9 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 axes[best_sub, marker].spines['left'].set_color('0.0')
                 [i.set_linewidth(2.5) for i in axes[best_sub, marker].spines.values()]
 
-        plt.suptitle('Marker Distribution Plots per subpopulation', x=0.5, y=1.02, fontsize=20)
+        f.suptitle('Marker Distribution Plots per subpopulation', x=0.5, y=1.02, fontsize=20)
         f.tight_layout()
         plt.savefig(filename)
         plt.close()
+
+        print('Marker distribution plot for expert {} added.'.format(expert+1))
