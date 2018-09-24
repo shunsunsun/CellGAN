@@ -273,7 +273,7 @@ def main():
     # Logger properties
     # -----------------
 
-    cellgan_logger = build_logger(out_dir=output_dir, logging_format='%s(message)',
+    cellgan_logger = build_logger(out_dir=output_dir, logging_format='%(message)s',
                                   level=logging.INFO)
     
     # Log data to output file
