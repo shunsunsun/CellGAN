@@ -5,7 +5,7 @@ import sys
 import re
 
 DEFAULT_MARKERS = ['CD3', 'CD45', 'CD4', 'CD20', 'CD33', 'CD123', 'CD14', 'IgM', 'HLA-DR', 'CD7']
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.insert(0, ROOT_DIR)
 
 
