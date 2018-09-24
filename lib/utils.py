@@ -219,6 +219,14 @@ def write_hparams_to_file(out_dir, hparams):
 
 def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
 
+    """
+    Setup the logger
+    :param out_dir: Output directory
+    :param level: Logger level (One of INFO, DEBUG)
+    :param logging_format: What format to use for logging messages
+    :return: logger with properties defined above
+    """
+
     log_file_name = out_dir + 'Output.log'
     logger = logging.getLogger('CellGan')
 
