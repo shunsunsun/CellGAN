@@ -250,7 +250,7 @@ def save_loss_plot(out_dir, disc_loss, gen_loss):
     :return: no returns
     """
 
-    filename = os.path.join(out_dir, 'loss_plot.jpg')
+    filename = os.path.join(out_dir, 'loss_plot.png')
     plt.plot(range(len(disc_loss)), disc_loss, 'r', label='Discriminator Loss')
     plt.plot(range(len(gen_loss)), gen_loss, 'b', label='Generator Loss')
     plt.legend()
