@@ -21,15 +21,18 @@ def read_fcs_data(file_path):
     if file_path.split('.')[-1] != 'fcs':
         raise NotImplementedError('Please submit a .fcs file for loading')
 
-    loaded_fcs = FCSData(file_path)
-    loaded_channels = flowio.FlowData(file_path).channels
+    try:
+        loaded_fcs = FCSData(file_path)
+        loaded_channels = flowio.FlowData(file_path).channels
+        channels = list()
 
-    channels = list()
+        for index in loaded_channels:
+            channels.append(loaded_channels[index]['PnS'])
 
-    for index in loaded_channels:
-        channels.append(loaded_channels[index]['PnS'])
+        return FCSFile(data=np.array(loaded_fcs), channels=channels)
 
-    return FCSFile(data=np.array(loaded_fcs), channels=channels)
+    except:
+        KeyError
 
 
 def extract_marker_indices(fcs_data, markers_of_interest):
