@@ -227,7 +227,7 @@ def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
     :return: logger with properties defined above
     """
 
-    log_file_name = out_dir + 'Output.log'
+    log_file_name = os.path.join(out_dir, 'Output.log')
     logger = logging.getLogger('CellGan')
 
     handler = logging.FileHandler(log_file_name, mode='w')
