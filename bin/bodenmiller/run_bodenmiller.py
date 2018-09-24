@@ -123,10 +123,10 @@ def main():
                         default=2, help='Number of times to train the discriminator before generator')
 
     parser.add_argument('-b1', '--beta_1', dest='beta_1', type=float,
-                        default=0.999, help='beta_1 value for adam optimizer')
+                        default=0.9, help='beta_1 value for adam optimizer')
 
     parser.add_argument('-b2', '--beta_2', dest='beta_2', type=float,
-                        default=0.9, help='beta_2 value for adam optimizer')
+                        default=0.999, help='beta_2 value for adam optimizer')
 
     parser.add_argument('--type_gan', dest='type_gan', choices=['normal', 'wgan', 'wgan-gp'],
                         default='wgan', help='Type of GAN used for training')
@@ -174,6 +174,7 @@ def main():
 
         file_path = os.path.join(args.input_dir, file.strip())
         fcs_data = read_fcs_data(file_path=file_path)
+
         try:
             marker_indices = extract_marker_indices(fcs_data=fcs_data, markers_of_interest=markers_of_interest)
             num_cells_in_file = fcs_data.data.shape[0]
@@ -192,6 +193,7 @@ def main():
             training_data.append(processed_data)
 
             print('File {} loaded and processed'.format(file))
+
         except:
             AttributeError
 
@@ -239,7 +241,7 @@ def main():
 
     model_hparams = {
         'noise_size': args.noise_size,
-        'num_experts': args.num_experts,
+        'num_experts': num_experts,
         'num_top': args.num_top,
         'learning_rate': args.learning_rate,
         'moe_sizes': [moe_in_size] + args.moe_sizes + [len(markers_of_interest)],
