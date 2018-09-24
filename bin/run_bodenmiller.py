@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import sys
+import json
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT_DIR)
@@ -17,8 +18,8 @@ from lib.preprocessing import extract_marker_indices, read_fcs_data
 from lib.utils import build_logger, save_loss_plot
 from lib.model import CellGan
 from lib.plotting import plot_marker_distributions
-from collections import Counter
-from datetime import datetime
+from datetime import datetime as dt
+import datetime
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -28,10 +29,10 @@ def main():
     parser = argparse.ArgumentParser()
 
     # IO parameters
-    parser.add_argument('-f', '--fcs', dest='fcs_file', default='./data/fcs.csv',
+    parser.add_argument('-f', '--fcs', dest='fcs_file', default='./data/AKTi/AKTi_fcs.csv',
                         help='file containing names of .fcs files to be used for GAN training')
 
-    parser.add_argument('-m', '--markers', dest='marker_file', default='./data/markers.csv',
+    parser.add_argument('-m', '--markers', dest='marker_file', default='./data/AKTi/markers.csv',
                         help='Filename containing the markers of interest')
 
     parser.add_argument('-i', '--in_dir', dest='input_dir', default='./data/AKTi',
@@ -142,13 +143,16 @@ def main():
 
     args = parser.parse_args()
 
-    fcs_files_of_interest = list(pd.read_csv(args.fcs_file, sep=','))
-    markers_of_interest = list(pd.read_csv(args.marker_file, sep=','))
+    with open(args.fcs_file, 'r') as f:
+        fcs_files_of_interest = json.load(f)
+
+    with open(args.marker_file, 'r') as f:
+        markers_of_interest = json.load(f)
 
     # Setup the output directory
     # --------------------------
 
-    experiment_name = datetime.now().strftime('%d-%m_%H-%M-%S')
+    experiment_name = dt.now().strftime('%d-%m_%H-%M-%S')
     output_dir = os.path.join(args.output_dir, experiment_name)
 
     if not os.path.exists(output_dir):
@@ -171,23 +175,26 @@ def main():
 
         file_path = os.path.join(args.input_dir, file.strip())
         fcs_data = read_fcs_data(file_path=file_path)
-        marker_indices = extract_marker_indices(fcs_data=fcs_data, markers_of_interest=markers_of_interest)
-        num_cells_in_file = fcs_data.data.shape[0]
-        weights_subpopulations.append(num_cells_in_file)
+        try:
+            marker_indices = extract_marker_indices(fcs_data=fcs_data, markers_of_interest=markers_of_interest)
+            num_cells_in_file = fcs_data.data.shape[0]
+            weights_subpopulations.append(num_cells_in_file)
 
-        if args.if_arcsinh and num_cells_in_file >= args.sub_limit:
-            processed_data = np.squeeze(fcs_data.data[:, marker_indices])
-            processed_data = f_trans(processed_data, c=args.cofactor)
+            if args.if_arcsinh and num_cells_in_file >= args.sub_limit:
+                processed_data = np.squeeze(fcs_data.data[:, marker_indices])
+                processed_data = f_trans(processed_data, c=args.cofactor)
 
-        else:
-            processed_data = fcs_data.data[:, marker_indices]
+            else:
+                processed_data = fcs_data.data[:, marker_indices]
 
-        training_labels.append([celltype_added] * num_cells_in_file)
-        celltype_added += 1
+            training_labels.append([celltype_added] * num_cells_in_file)
+            celltype_added += 1
 
-        training_data.append(processed_data)
+            training_data.append(processed_data)
 
-        print('File {} loaded and processed'.format(file))
+            print('File {} loaded and processed'.format(file))
+        except:
+            AttributeError
 
     print('Loading and processing completed.')
     print('Time taken: ', datetime.timedelta(seconds=time.time() - start_time))
@@ -207,10 +214,7 @@ def main():
     d_pooled = get_num_pooled(num_cell_cnns=args.num_cell_cnns,
                               num_cells_per_input=args.num_cells_per_input)
 
-    if not args.num_subpopulations:
-        num_subpopulations = len(np.unique(training_labels))
-    else:
-        num_subpopulations = args.num_subpopulations
+    num_subpopulations = len(np.unique(training_labels))
 
     if not args.num_experts:
         num_experts = num_subpopulations
@@ -297,10 +301,11 @@ def main():
 
             for _ in range(args.num_critic):
 
-                real_batch, _ = generate_subset(inputs=training_data,
-                                                num_cells_per_input=args.num_cells_per_input,
-                                                weights=outlier_scores,
-                                                batch_size=args.batch_size)
+                real_batch = generate_subset(inputs=training_data,
+                                             num_cells_per_input=args.num_cells_per_input,
+                                             weights=outlier_scores,
+                                             batch_size=args.batch_size,
+                                             return_indices=False)
 
                 noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
                                        num_cells_per_input=args.num_cells_per_input)
@@ -374,7 +379,8 @@ def main():
                 real_samples, indices = generate_subset(inputs=training_data,
                                                         num_cells_per_input=num_samples,
                                                         weights=outlier_scores,
-                                                        batch_size=1)
+                                                        batch_size=1,
+                                                        return_indices=True)
                 real_samples = real_samples.reshape(num_samples, len(markers_of_interest))
                 indices = np.reshape(indices, real_samples.shape[0])
                 real_sample_subs = training_labels[indices]
