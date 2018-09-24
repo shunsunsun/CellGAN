@@ -9,7 +9,6 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT_DIR)
 
 import time
-import datetime
 import pandas as pd
 import logging
 from lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
@@ -38,7 +37,7 @@ def main():
     parser.add_argument('-i', '--in_dir', dest='input_dir', default='./data/AKTi',
                         help='Directory containing the input .fcs files')
 
-    parser.add_argument('-o', '--out_dir', dest='output_dir', default='./data/tests/NK_test',
+    parser.add_argument('-o', '--out_dir', dest='output_dir', default='./results/AKTi',
                         help='Directory where output will be generated.')
 
     parser.add_argument('-l', '--logging', dest='logging', default=True,
