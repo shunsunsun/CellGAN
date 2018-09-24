@@ -10,10 +10,15 @@ sys.path.insert(0, ROOT_DIR)
 import time
 import datetime
 import pandas as pd
+import logging
 from lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
 from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.preprocessing import extract_marker_indices, read_fcs_data
+from lib.utils import build_logger, save_loss_plot
 from lib.model import CellGan
+from lib.plotting import plot_marker_distributions
+from collections import Counter
+from datetime import datetime
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -66,7 +71,7 @@ def main():
                         help='Sizes of the Mixture of Experts hidden layers')
 
     parser.add_argument('-e', '--experts', dest='num_experts', type=int,
-                        required=True, help='Number of experts in the generator')
+                        help='Number of experts in the generator')
 
     parser.add_argument('-g', '--g_filters', dest='num_filters_generator',
                         type=int, default=20, help='Number of filters in conv layer of generator')
@@ -140,6 +145,15 @@ def main():
     fcs_files_of_interest = list(pd.read_csv(args.fcs_file, sep=','))
     markers_of_interest = list(pd.read_csv(args.marker_file, sep=','))
 
+    # Setup the output directory
+    # --------------------------
+
+    experiment_name = datetime.now().strftime('%d-%m_%H-%M-%S')
+    output_dir = os.path.join(args.output_dir, experiment_name)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     # Data Loading Steps
     # ------------------
 
@@ -148,6 +162,10 @@ def main():
     start_time = time.time()
 
     training_data = list()
+    training_labels = list() # These are not just for training, just for checking later
+    celltype_added = 0
+
+    weights_subpopulations = list()
 
     for file in fcs_files_of_interest:
 
@@ -155,6 +173,7 @@ def main():
         fcs_data = read_fcs_data(file_path=file_path)
         marker_indices = extract_marker_indices(fcs_data=fcs_data, markers_of_interest=markers_of_interest)
         num_cells_in_file = fcs_data.data.shape[0]
+        weights_subpopulations.append(num_cells_in_file)
 
         if args.if_arcsinh and num_cells_in_file >= args.sub_limit:
             processed_data = np.squeeze(fcs_data.data[:, marker_indices])
@@ -162,6 +181,9 @@ def main():
 
         else:
             processed_data = fcs_data.data[:, marker_indices]
+
+        training_labels.append([celltype_added] * num_cells_in_file)
+        celltype_added += 1
 
         training_data.append(processed_data)
 
@@ -171,11 +193,13 @@ def main():
     print('Time taken: ', datetime.timedelta(seconds=time.time() - start_time))
     print()
 
+    training_data = np.vstack(training_data)
+    training_labels = np.concatenate(training_labels)
+    weights_subpopulations = np.array(weights_subpopulations)/np.sum(weights_subpopulations)
+    outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
+
     # Initializing the CellGan model
     # ------------------------------
-
-    training_data = np.vstack(training_data)
-    outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
 
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
                             high=args.d_filters_max)
@@ -183,11 +207,21 @@ def main():
     d_pooled = get_num_pooled(num_cell_cnns=args.num_cell_cnns,
                               num_cells_per_input=args.num_cells_per_input)
 
+    if not args.num_subpopulations:
+        num_subpopulations = len(np.unique(training_labels))
+    else:
+        num_subpopulations = args.num_subpopulations
+
+    if not args.num_experts:
+        num_experts = num_subpopulations
+    else:
+        num_experts = args.num_experts
+
     print('Building CellGan...')
 
     model = CellGan(noise_size=args.noise_size, moe_sizes=args.moe_sizes,
                     batch_size=args.batch_size, num_markers=len(markers_of_interest),
-                    num_experts=args.num_experts, g_filters=args.num_filters_generator,
+                    num_experts=num_experts, g_filters=args.num_filters_generator,
                     d_filters=d_filters, d_pooled=d_pooled, coeff_l1=args.coeff_l1,
                     coeff_l2=args.coeff_l2, coeff_act=args.coeff_act, num_top=args.num_top,
                     dropout_prob=args.dropout_prob, noisy_gating=args.noisy_gating,
@@ -221,14 +255,31 @@ def main():
         'batch_size': args.batch_size,
     }
 
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+    model_path = os.path.join(output_dir, 'model.ckpt')
 
-    write_hparams_to_file(out_dir=args.output_dir, hparams=model_hparams)
+    # Write hparams to text file (for reproducibility later)
+    # ------------------------------------------------------
 
-    # TODO: Add logger properties
+    print('Saving hyperparameters...')
+    write_hparams_to_file(out_dir=output_dir, hparams=model_hparams)
+    print('Hyperparameters saved.')
+    print()
 
-    # Training the GAN
+    # Logger properties
+    # -----------------
+
+    cellgan_logger = build_logger(out_dir=output_dir, logging_format='%s(message)',
+                                  level=logging.INFO)
+    
+    # Log data to output file
+    cellgan_logger.info("Experiment Name: " + experiment_name + '\n')
+    cellgan_logger.info("Starting our experiments with {} subpopulations \n".format(num_subpopulations))
+    cellgan_logger.info("Number of filters in the CellCnn Ensemble are: {}".format(d_filters))
+    cellgan_logger.info("number of Cells Pooled in the CellCnn Ensemble are: {} \n".format(d_pooled))
+    cellgan_logger.info("The subpopulation weights are {} \n".format(weights_subpopulations))
+
+    # Training the Gan
+    # ----------------
 
     discriminator_loss = list()
     generator_loss = list()
@@ -239,8 +290,7 @@ def main():
 
         for iteration in range(args.num_iterations):
 
-            # ----------------------
-            # DISCRIMINATOR TRAINING
+            # Discriminator Training
             # ----------------------
 
             model.set_train(True)
@@ -272,8 +322,7 @@ def main():
                 else:
                     raise NotImplementedError('Support for wgan-gp not implemented yet.')
 
-            # ------------------
-            # GENERATOR TRAINING
+            # Generator training
             # ------------------
 
             noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
@@ -287,97 +336,66 @@ def main():
             discriminator_loss.append(d_loss)
             generator_loss.append(g_loss)
 
-            # TODO: Add the plotting thing
+            if iteration % 100 == 0:
 
-            # if it % 100 == 0:
-            #     model.set_train(False)
-            #
-            #     print("We are at iteration: {}".format(it + 1))
-            #     # print("Discriminator Loss: {}".format(d_loss))
-            #     # print("Generator Loss: {}".format(g_loss))
-            #     # print("Moe Loss: {}".format(moe_loss))
-            #
-            #     logger.info("We are at iteration: {}".format(it + 1))
-            #     logger.info("Discriminator Loss: {}".format(d_loss))
-            #     logger.info("Generator Loss: {}".format(g_loss))
-            #     logger.info("Load Balancing Loss: {} \n".format(moe_loss))
-            #
-            #     # Fake Data
-            #     # ---------
-            #
-            #     n_samples = 1000
-            #     input_noise = sample_z(shape=[1, n_samples, noise_size])
-            #
-            #     fetches = [model.g_sample, model.generator.gates]
-            #     feed_dict = {
-            #         model.Z: input_noise
-            #     }
-            #
-            #     test_fake, gates = sess.run(
-            #         fetches=fetches,
-            #         feed_dict=feed_dict
-            #     )
-            #
-            #     test_fake = test_fake.reshape(n_samples, n_markers)
-            #
-            #     experts = np.argmax(gates, axis=1)
-            #     experts_used = len(np.unique(experts))
-            #
-            #     # logger.info("Number of experts used: {}".format(experts_used))
-            #
-            #     # Real Data
-            #     # ---------
-            #
-            #     test_real, indices = generate_random_subset(inputs=real_data,
-            #                                                 ncell=n_samples,
-            #                                                 batch_size=1)
-            #
-            #     test_real = test_real.reshape(n_samples, n_markers)
-            #     indices = np.reshape(indices, test_real.shape[0])
-            #     test_real_subs = real_subs[indices]
-            #
-            #     # This is just for understanding, not used anywhere in training the network
-            #
-            #     logger.info("Number of subpopulations present: {} \n".format(len(np.unique(test_real_subs))))
-            #
-            #     test_data_freq = dict(Counter(test_real_subs))
-            #     total = sum(test_data_freq.values(), 0.0)
-            #     test_data_freq = {k: round(test_data_freq[k] / total, 3) for k in sorted(test_data_freq.keys())}
-            #
-            #     real_data_freq = dict(Counter(real_subs))
-            #     total = sum(real_data_freq.values(), 0.0)
-            #     real_data_freq = {k: round(real_data_freq[k] / total, 3) for k in sorted(real_data_freq.keys())}
-            #
-            #     fake_data_freq = dict(Counter(experts))
-            #     total = sum(fake_data_freq.values(), 0.0)
-            #     fake_data_freq = {k: round(fake_data_freq[k] / total, 3) for k in sorted(fake_data_freq.keys())}
-            #
-            #     logger.info("Frequency of subpopulations in real data is: {}".format(real_data_freq))
-            #     logger.info("Frequency of subpopulations in test data is: {} \n".format(test_data_freq))
-            #
-            #     logger.info("Checking Weights")
-            #     logger.info("Real subpopulation weights: {}".format(sorted(real_data_freq.values(), reverse=True)))
-            #     logger.info("Expert subpopulation weights: {}\n".format(sorted(fake_data_freq.values(), reverse=True)))
-            #
-            #     logger.info("-----------\n")
-            #
-            #     pca_plot(
-            #         out_dir=output_dir,
-            #         real_data=test_real,
-            #         fake_data=test_fake,
-            #         experts=experts,
-            #         real_subs=test_real_subs,
-            #         it=it
-            #     )
-            #
-            #     saveLossPlot(
-            #         dir_output=output_dir,
-            #         disc_loss=D_loss,
-            #         gen_loss=G_loss
-            #     )
-            #
-            #     saver = tf.train.Saver()
-            #     save_path = saver.save(sess, model_path)
+                model.set_train(False)
+
+                print("We are at iteration: {}".format(iteration + 1))
+                print("Discriminator Loss: {}".format(d_loss))
+                print("Generator Loss: {}".format(g_loss))
+                print("Moe Loss: {}".format(moe_loss))
+                print()
+
+                cellgan_logger.info("We are at iteration: {}".format(iteration + 1))
+                cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
+                cellgan_logger.info("Generator Loss: {}".format(g_loss))
+                cellgan_logger.info("Load Balancing Loss: {} \n".format(moe_loss))
+
+                # Fake Data
+                # ---------
+
+                num_samples = 1000
+                noise_sample = sample_z(batch_size=1, num_cells_per_input=num_samples, noise_size=args.noise_size)
+
+                fetches = [model.g_sample, model.generator.gates]
+                feed_dict = {model.Z: noise_sample}
+
+                fake_samples, gates = sess.run(fetches=fetches, feed_dict=feed_dict)
+                fake_samples = fake_samples.reshape(num_samples, len(markers_of_interest))
+
+                fake_sample_experts = np.argmax(gates, axis=1)
+                num_experts_used = len(np.unique(fake_sample_experts))
+
+                cellgan_logger.info("Number of experts used: {}".format(num_experts_used))
+
+                # Real Data
+                # ---------
+
+                real_samples, indices = generate_subset(inputs=training_data,
+                                                        num_cells_per_input=num_samples,
+                                                        weights=outlier_scores,
+                                                        batch_size=1)
+                real_samples = real_samples.reshape(num_samples, len(markers_of_interest))
+                indices = np.reshape(indices, real_samples.shape[0])
+                real_sample_subs = training_labels[indices]
+
+                # Save loss plot
+                # --------------
+
+                save_loss_plot(out_dir=output_dir, disc_loss=discriminator_loss,
+                               gen_loss=generator_loss)
+
+                # Plot marker distributions
+                # -------------------------
+
+                plot_marker_distributions(out_dir=output_dir, real_subset=real_samples,
+                                          fake_subset=fake_samples, real_subset_labels=real_sample_subs,
+                                          fake_subset_labels=fake_sample_experts, num_experts=num_experts,
+                                          num_markers=len(markers_of_interest), num_subpopulations=num_subpopulations,
+                                          iteration=iteration, zero_sub=True, pca=False)
+
+                saver = tf.train.Saver()
+                save_path = saver.save(sess, model_path)
 
 
 if __name__ == '__main__':
