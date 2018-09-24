@@ -88,16 +88,16 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 axes[sub, marker].set_title('Marker {}'.format(marker))
                 axes[sub, marker].set_ylabel('Subpopulation {}'.format(sub))
 
-            if np.sum(ks_markers) <= best_ks_sum:
+            if np.sum(ks_markers) < best_ks_sum:
                 best_ks_sum = np.sum(ks_markers)
                 best_sub = sub
 
-            for marker in range(num_markers):
-                axes[best_sub, marker].spines['bottom'].set_color('0.0')
-                axes[best_sub, marker].spines['top'].set_color('0.0')
-                axes[best_sub, marker].spines['right'].set_color('0.0')
-                axes[best_sub, marker].spines['left'].set_color('0.0')
-                [i.set_linewidth(2.5) for i in axes[best_sub, marker].spines.values()]
+        for marker in range(num_markers):
+            axes[best_sub, marker].spines['bottom'].set_color('0.0')
+            axes[best_sub, marker].spines['top'].set_color('0.0')
+            axes[best_sub, marker].spines['right'].set_color('0.0')
+            axes[best_sub, marker].spines['left'].set_color('0.0')
+            [i.set_linewidth(2.5) for i in axes[best_sub, marker].spines.values()]
 
         f.suptitle('Marker Distribution Plots per subpopulation', x=0.5, y=1.02, fontsize=20)
         f.tight_layout()
