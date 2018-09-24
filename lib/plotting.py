@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_labels, real_subset_labels,
-                              num_subpopulations, num_markers, num_experts, iteration, pca=True):
+                              num_subpopulations, num_markers, num_experts, iteration, zero_sub=False, pca=True):
 
     if pca:
         f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers + 1, figsize=(30, 30))
@@ -33,7 +33,11 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
 
         for sub in range(num_subpopulations):
 
-            indices = np.where(real_subset_labels == (sub + 1))[0]
+            if not zero_sub:
+                indices = np.where(real_subset_labels == (sub + 1))[0]
+            else:
+                indices = np.where(real_subset_labels == sub)[0]
+
             real_data_by_sub = real_subset[indices, :]
 
             KS_markers = list()
