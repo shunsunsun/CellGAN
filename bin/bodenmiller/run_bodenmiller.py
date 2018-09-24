@@ -47,7 +47,7 @@ def main():
                         default=True, help='Whether to plot results')
 
     # data processing
-    parser.add_argument('-a', '--arcsinh', dest='if_arcsinh', action='store_true',
+    parser.add_argument('-a', '--arcsinh', dest='if_arcsinh', default=True,
                         help='Whether to use arcsinh transformation on the data')
 
     parser.add_argument('--sub_limit', dest='subpopulation_limit', type=int,
@@ -180,20 +180,19 @@ def main():
             num_cells_in_file = fcs_data.data.shape[0]
             weights_subpopulations.append(num_cells_in_file)
 
-            if args.if_arcsinh and num_cells_in_file >= args.sub_limit:
+            if num_cells_in_file >= args.subpopulation_limit:
+
                 processed_data = np.squeeze(fcs_data.data[:, marker_indices])
                 processed_data = f_trans(processed_data, c=args.cofactor)
 
+                training_labels.append([celltype_added] * num_cells_in_file)
+                celltype_added += 1
+
+                training_data.append(processed_data)
+                print('File {} loaded and processed'.format(file))
+
             else:
-                processed_data = fcs_data.data[:, marker_indices]
-
-            training_labels.append([celltype_added] * num_cells_in_file)
-            celltype_added += 1
-
-            training_data.append(processed_data)
-
-            print('File {} loaded and processed'.format(file))
-
+                continue
         except:
             AttributeError
 
@@ -203,6 +202,7 @@ def main():
 
     training_data = np.vstack(training_data)
     training_labels = np.concatenate(training_labels)
+
     weights_subpopulations = np.array(weights_subpopulations)/np.sum(weights_subpopulations)
     outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
 
@@ -388,18 +388,23 @@ def main():
 
                 # Save loss plot
                 # --------------
-
+                print('Saving loss plot...')
                 save_loss_plot(out_dir=output_dir, disc_loss=discriminator_loss,
                                gen_loss=generator_loss)
+                print('Loss plot saved...')
+                print()
 
                 # Plot marker distributions
                 # -------------------------
 
+                print('Adding marker distribution plots...')
                 plot_marker_distributions(out_dir=output_dir, real_subset=real_samples,
                                           fake_subset=fake_samples, real_subset_labels=real_sample_subs,
                                           fake_subset_labels=fake_sample_experts, num_experts=num_experts,
                                           num_markers=len(markers_of_interest), num_subpopulations=num_subpopulations,
                                           iteration=iteration, zero_sub=True, pca=False)
+                print('Marker distribution plots added.')
+                print()
 
                 saver = tf.train.Saver()
                 save_path = saver.save(sess, model_path)
