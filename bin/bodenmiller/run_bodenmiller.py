@@ -14,9 +14,9 @@ import logging
 from lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
 from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.preprocessing import extract_marker_indices, read_fcs_data
-from lib.utils import build_logger, save_loss_plot
+from lib.utils import build_logger
 from lib.model import CellGan
-from lib.plotting import plot_marker_distributions
+from lib.plotting import plot_marker_distributions, plot_loss
 from datetime import datetime as dt
 import datetime
 
@@ -387,8 +387,7 @@ def main():
                 # Save loss plot
                 # --------------
                 print('Saving loss plot...')
-                save_loss_plot(out_dir=output_dir, disc_loss=discriminator_loss,
-                               gen_loss=generator_loss)
+                plot_loss(out_dir=output_dir, disc_loss=discriminator_loss, gen_loss=generator_loss)
                 print('Loss plot saved...')
                 print()
 
