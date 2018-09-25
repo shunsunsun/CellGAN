@@ -377,7 +377,7 @@ def main():
 
                 real_samples, indices = generate_subset(inputs=training_data,
                                                         num_cells_per_input=num_samples,
-                                                        weights=outlier_scores,
+                                                        weights=None,
                                                         batch_size=1,
                                                         return_indices=True)
                 real_samples = real_samples.reshape(num_samples, len(markers_of_interest))
