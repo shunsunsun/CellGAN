@@ -47,8 +47,6 @@ def main():
                         default=True, help='Whether to plot results')
 
     # data processing
-    parser.add_argument('-a', '--arcsinh', dest='if_arcsinh', default=True,
-                        help='Whether to use arcsinh transformation on the data')
 
     parser.add_argument('--sub_limit', dest='subpopulation_limit', type=int,
                         default=30, help='Minimum number of cells to be called a subpopulation')
@@ -372,7 +370,7 @@ def main():
                 fake_sample_experts = np.argmax(gates, axis=1)
                 num_experts_used = len(np.unique(fake_sample_experts))
 
-                cellgan_logger.info("Number of experts used: {}".format(num_experts_used))
+                cellgan_logger.info("Number of experts used: {} \n".format(num_experts_used))
 
                 # Real Data
                 # ---------
@@ -402,7 +400,8 @@ def main():
                                           fake_subset=fake_samples, real_subset_labels=real_sample_subs,
                                           fake_subset_labels=fake_sample_experts, num_experts=num_experts,
                                           num_markers=len(markers_of_interest), num_subpopulations=num_subpopulations,
-                                          iteration=iteration, zero_sub=True, pca=False)
+                                          marker_names=markers_of_interest, iteration=iteration,
+                                          zero_sub=True, pca=False)
                 print('Marker distribution plots added.')
                 print()
 
