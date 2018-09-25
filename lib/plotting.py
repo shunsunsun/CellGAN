@@ -108,3 +108,23 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
         plt.close()
 
         print('Marker distribution plot for expert {} added.'.format(expert+1))
+
+
+def plot_loss(out_dir, disc_loss, gen_loss):
+
+    """
+    Saves loss plot to output directory
+    :param out_dir: str, output directory
+    :param disc_loss: list, discriminator losses
+    :param gen_loss: list, generator losses
+    :return: no returns
+    """
+
+    filename = os.path.join(out_dir, 'loss_plot.png')
+    plt.plot(range(len(disc_loss)), disc_loss, 'r', label='Discriminator Loss')
+    plt.plot(range(len(gen_loss)), gen_loss, 'b', label='Generator Loss')
+    plt.xlabel('Number of Iterations')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(filename)
+    plt.close()
