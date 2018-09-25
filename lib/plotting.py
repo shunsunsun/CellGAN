@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 
 def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_labels, real_subset_labels,
-                              num_subpopulations, num_markers, num_experts, iteration, zero_sub=False, pca=True):
+                              num_subpopulations, num_markers, num_experts, marker_names,
+                              iteration, zero_sub=False, pca=True):
 
     """
     Plots the marker distribution per expert for each subpopulation and computes KS test and picks the best matching
@@ -20,6 +21,7 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
     :param num_subpopulations: Number of subpopulations in the training data
     :param num_markers: Number of markers whose distribution we tried to learn
     :param num_experts: Number of experts used in the generator
+    :param marker_names: Names of markers
     :param iteration: iteration no.
     :param zero_sub: Whether the subpopulation labels start with zero or one
     :param pca: To add an additional plot with pca
@@ -72,11 +74,11 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
 
                 bins = np.linspace(overall_min, overall_max, num=30)
 
-                w = np.ones_like(real_data_by_sub)/float(len(real_data_by_sub))
-                axes[sub, marker].hist(real_data_by_sub, bins=bins, weights=w, label='R', normed=0, alpha=0.5)
+                w = np.ones_like(real_data_by_sub[:, marker])/float(len(real_data_by_sub[:, marker]))
+                axes[sub, marker].hist(real_data_by_sub[:, marker], bins=bins, weights=w, label='R', normed=0, alpha=0.5)
 
-                w = np.ones_like(fake_data_by_expert)/float(len(fake_data_by_expert))
-                axes[sub, marker].hist(fake_data_by_expert, bins=bins, weights=w, label='F', normed=0, alpha=0.5)
+                w = np.ones_like(fake_data_by_expert[:, marker])/float(len(fake_data_by_expert[:, marker]))
+                axes[sub, marker].hist(fake_data_by_expert[:, marker], bins=bins, weights=w, label='F', normed=0, alpha=0.5)
 
                 ks = ks_2samp(fake_data_by_expert[:, marker], real_data_by_sub[:, marker])[0]
                 ks_markers.append(ks)
@@ -85,8 +87,9 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 ticks = np.linspace(overall_min, overall_max, num=5)
                 axes[sub, marker].set_xticks(ticks.round(2))
 
-                axes[sub, marker].set_title('Marker {}'.format(marker))
-                axes[sub, marker].set_ylabel('Subpopulation {}'.format(sub))
+                axes[sub, marker].set_title('{}'.format(marker_names[marker]))
+                axes[sub, marker].set_ylabel('Subpopulation {}'.format(sub+1))
+                axes[sub, marker].legend()
 
             if np.sum(ks_markers) < best_ks_sum:
                 best_ks_sum = np.sum(ks_markers)
