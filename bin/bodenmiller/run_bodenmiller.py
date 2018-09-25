@@ -176,7 +176,6 @@ def main():
         try:
             marker_indices = extract_marker_indices(fcs_data=fcs_data, markers_of_interest=markers_of_interest)
             num_cells_in_file = fcs_data.data.shape[0]
-            weights_subpopulations.append(num_cells_in_file)
 
             if num_cells_in_file >= args.subpopulation_limit:
 
@@ -185,6 +184,8 @@ def main():
 
                 training_labels.append([celltype_added] * num_cells_in_file)
                 celltype_added += 1
+
+                weights_subpopulations.append(num_cells_in_file)
 
                 training_data.append(processed_data)
                 print('File {} loaded and processed'.format(file))
