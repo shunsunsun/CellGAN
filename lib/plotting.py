@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_labels, real_subset_labels,
                               num_subpopulations, num_markers, num_experts, marker_names,
-                              iteration, zero_sub=False, pca=True):
+                              iteration, logger, zero_sub=False, pca=True):
 
     """
     Plots the marker distribution per expert for each subpopulation and computes KS test and picks the best matching
@@ -23,6 +23,7 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
     :param num_experts: Number of experts used in the generator
     :param marker_names: Names of markers
     :param iteration: iteration no.
+    :param logger: logger used for logging results
     :param zero_sub: Whether the subpopulation labels start with zero or one
     :param pca: To add an additional plot with pca
     :return:
@@ -107,7 +108,7 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
         plt.savefig(filename)
         plt.close()
 
-        print('Marker distribution plot for expert {} added.'.format(expert+1))
+        logger.info('Marker distribution plot for expert {} added.'.format(expert+1))
 
 
 def plot_loss(out_dir, disc_loss, gen_loss):

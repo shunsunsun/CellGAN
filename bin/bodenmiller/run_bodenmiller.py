@@ -155,11 +155,16 @@ def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    # Logger properties
+    # -----------------
+
+    cellgan_logger = build_logger(out_dir=output_dir, logging_format='%(message)s',
+                                  level=logging.INFO)
+
     # Data Loading Steps
     # ------------------
 
-    print()
-    print('Starting to load and process the .fcs files...')
+    cellgan_logger.info('Starting to load and process the .fcs files...')
     start_time = time.time()
 
     training_data = list()
@@ -188,31 +193,36 @@ def main():
                 weights_subpopulations.append(num_cells_in_file)
 
                 training_data.append(processed_data)
-                print('File {} loaded and processed'.format(file))
+                cellgan_logger.info('File {} loaded and processed'.format(file))
 
             else:
                 continue
         except:
             AttributeError
 
-    print('Loading and processing completed.')
-    print('Time taken: ', datetime.timedelta(seconds=time.time() - start_time))
-    print()
+    cellgan_logger.info("Loading and processing completed.")
+    cellgan_logger.info('Time taken: %0.3f seconds ' % datetime.timedelta(seconds=time.time() - start_time))
 
     training_data = np.vstack(training_data)
     training_labels = np.concatenate(training_labels)
 
+    cellgan_logger.info("Computing outlier scores for each cell...")
     weights_subpopulations = np.array(weights_subpopulations)/np.sum(weights_subpopulations)
     outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
+    cellgan_logger.info("Outlier scores computed.")
 
     # Initializing the CellGan model
     # ------------------------------
 
+    cellgan_logger.info("Sampling filters for the CellCnn Ensemble...")
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
                             high=args.d_filters_max)
+    cellgan_logger.info("Filters for the CellCnn Ensemble sampled.")
 
+    cellgan_logger.info("Sampling number of cells to be pooled...")
     d_pooled = get_num_pooled(num_cell_cnns=args.num_cell_cnns,
                               num_cells_per_input=args.num_cells_per_input)
+    cellgan_logger.info("Number of cells to be pooled sampled.")
 
     num_subpopulations = len(np.unique(training_labels))
 
@@ -221,7 +231,7 @@ def main():
     else:
         num_experts = args.num_experts
 
-    print('Building CellGan...')
+    cellgan_logger.info('Building CellGan...')
 
     model = CellGan(noise_size=args.noise_size, moe_sizes=args.moe_sizes,
                     batch_size=args.batch_size, num_markers=len(markers_of_interest),
@@ -233,8 +243,7 @@ def main():
                     reg_lambda=args.reg_lambda, train=True, init_method=args.init_method,
                     type_gan=args.type_gan, load_balancing=args.load_balancing)
 
-    print('CellGan built. ')
-    print()
+    cellgan_logger.info('CellGan built. ')
 
     moe_in_size = model.generator.get_moe_input_size()
 
@@ -264,22 +273,15 @@ def main():
     # Write hparams to text file (for reproducibility later)
     # ------------------------------------------------------
 
-    print('Saving hyperparameters...')
+    cellgan_logger.info('Saving hyperparameters...')
     write_hparams_to_file(out_dir=output_dir, hparams=model_hparams)
-    print('Hyperparameters saved.')
-    print()
+    cellgan_logger.info('Hyperparameters saved.')
 
-    # Logger properties
-    # -----------------
-
-    cellgan_logger = build_logger(out_dir=output_dir, logging_format='%(message)s',
-                                  level=logging.INFO)
-    
     # Log data to output file
     cellgan_logger.info("Experiment Name: " + experiment_name + '\n')
     cellgan_logger.info("Starting our experiments with {} subpopulations \n".format(num_subpopulations))
     cellgan_logger.info("Number of filters in the CellCnn Ensemble are: {}".format(d_filters))
-    cellgan_logger.info("number of Cells Pooled in the CellCnn Ensemble are: {} \n".format(d_pooled))
+    cellgan_logger.info("number of cells pooled in the CellCnn Ensemble are: {} \n".format(d_pooled))
     cellgan_logger.info("The subpopulation weights are {} \n".format(weights_subpopulations))
 
     # Training the Gan
@@ -306,6 +308,8 @@ def main():
                                              weights=outlier_scores,
                                              batch_size=args.batch_size,
                                              return_indices=False)
+
+                # TODO: Add real data subpopulation frequency
 
                 noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
                                        num_cells_per_input=args.num_cells_per_input)
@@ -345,22 +349,17 @@ def main():
 
                 model.set_train(False)
 
-                print("We are at iteration: {}".format(iteration + 1))
-                print("Discriminator Loss: {}".format(d_loss))
-                print("Generator Loss: {}".format(g_loss))
-                print("Moe Loss: {}".format(moe_loss))
-                print()
-
                 cellgan_logger.info("We are at iteration: {}".format(iteration + 1))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
-                cellgan_logger.info("Load Balancing Loss: {} \n".format(moe_loss))
+                cellgan_logger.info("Load Balancing Loss: {}".format(moe_loss))
 
                 # Fake Data
                 # ---------
 
                 num_samples = 1000
-                noise_sample = sample_z(batch_size=1, num_cells_per_input=num_samples, noise_size=args.noise_size)
+                noise_sample = sample_z(batch_size=1, num_cells_per_input=num_samples,
+                                        noise_size=args.noise_size)
 
                 fetches = [model.g_sample, model.generator.gates]
                 feed_dict = {model.Z: noise_sample}
@@ -370,6 +369,8 @@ def main():
 
                 fake_sample_experts = np.argmax(gates, axis=1)
                 num_experts_used = len(np.unique(fake_sample_experts))
+
+                # TODO: Add real and fake data subpopulation frequency to logger
 
                 cellgan_logger.info("Number of experts used: {} \n".format(num_experts_used))
 
@@ -387,26 +388,26 @@ def main():
 
                 # Save loss plot
                 # --------------
-                print('Saving loss plot...')
+                cellgan_logger.info("Saving loss plot")
                 plot_loss(out_dir=output_dir, disc_loss=discriminator_loss, gen_loss=generator_loss)
-                print('Loss plot saved...')
-                print()
+                cellgan_logger.info("Loss plot saved.")
 
                 # Plot marker distributions
                 # -------------------------
 
-                print('Adding marker distribution plots...')
+                cellgan_logger.info("Adding marker distribution plots...")
                 plot_marker_distributions(out_dir=output_dir, real_subset=real_samples,
                                           fake_subset=fake_samples, real_subset_labels=real_sample_subs,
                                           fake_subset_labels=fake_sample_experts, num_experts=num_experts,
                                           num_markers=len(markers_of_interest), num_subpopulations=num_subpopulations,
-                                          marker_names=markers_of_interest, iteration=iteration,
+                                          marker_names=markers_of_interest, iteration=iteration, logger=cellgan_logger,
                                           zero_sub=True, pca=False)
-                print('Marker distribution plots added.')
-                print()
+                cellgan_logger.info("Marker distribution plots added.")
 
+                cellgan_logger.info("Saving the model...")
                 saver = tf.train.Saver()
                 save_path = saver.save(sess, model_path)
+                cellgan_logger.info("Model saved at {}".format(save_path))
 
 
 if __name__ == '__main__':
