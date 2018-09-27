@@ -6,8 +6,9 @@ import json
 
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+from collections import Counter
 import logging
+from scipy.stats import ks_2samp
 
 xav_init = tf.contrib.layers.xavier_initializer
 normal_init = tf.truncated_normal_initializer
@@ -240,3 +241,87 @@ def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
     logger.propagate = False
 
     return logger
+
+
+def compute_frequency(labels, weighted=False):
+
+    labels = labels.reshape(-1)
+
+    label_counts = Counter(labels)
+
+    if not weighted:
+        return label_counts
+
+    else:
+        label_sum = np.sum(list(label_counts.values()))
+        for key in label_counts:
+            label_counts[key] = label_counts[key]/label_sum
+
+        return label_counts
+
+
+def compute_ks(real_data, real_labels, fake_data, expert_labels, num_subpopulations, num_experts):
+
+    ks_sums = list()
+
+    for expert in range(num_experts):
+
+        ks_sum_per_expert = list()
+        expert_indices = np.where(expert_labels == expert)[0]
+
+        if len(expert_indices) == 0:
+            ks_sums.append([0]*num_subpopulations)
+            continue
+
+        else:
+            fake_data_by_expert = fake_data[expert_indices, :]
+
+            for sub in range(num_subpopulations):
+                subs_indices = np.where(real_labels == sub)[0]
+
+                if len(subs_indices) == 0:
+                    ks_sum_per_expert.append(0)
+                    continue
+
+                else:
+                    real_data_by_sub = real_data[subs_indices]
+                    ks_sum = np.sum([ks_2samp(real_data_by_sub[:, marker], fake_data_by_expert[:, marker])[0]
+                                     for marker in range(real_data.shape[-1])])
+
+                    ks_sum_per_expert.append(ks_sum)
+
+        ks_sums.append(ks_sum_per_expert)
+
+    ks_sums = np.asarray(ks_sums)
+    assert ks_sums.shape == (num_experts, num_subpopulations)
+
+    return ks_sums
+
+
+def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
+                                   expert_labels, num_subpopulations, num_experts):
+
+    ks_sums = compute_ks(real_data=real_data, real_labels=real_labels, fake_data=fake_data,
+                         expert_labels=expert_labels, num_subpopulations=num_subpopulations,
+                         num_experts=num_experts)
+
+    expert_assignments = np.argmax(ks_sums, axis=1)
+
+    return expert_assignments
+
+
+def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_subpopulations):
+
+    expert_weights = compute_frequency(labels=expert_labels, weighted=True)
+    learnt_subpopulation_weights = dict()
+
+    for subpopulation in range(num_subpopulations):
+
+        if subpopulation not in expert_assignments:
+            learnt_subpopulation_weights[subpopulation] = 0
+        else:
+            which_experts = np.where(expert_assignments == subpopulation)[0]
+            for expert in which_experts:
+                learnt_subpopulation_weights += expert_weights[expert]
+
+    return learnt_subpopulation_weights
