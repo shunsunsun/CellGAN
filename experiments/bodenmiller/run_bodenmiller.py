@@ -198,8 +198,8 @@ def main():
             AttributeError
 
     cellgan_logger.info("Loading and processing completed.")
-    cellgan_logger.info('TIMING: File loading and processing took %0.3f seconds '
-                        % datetime.timedelta(seconds=time.time() - start_time))
+    cellgan_logger.info('TIMING: File loading and processing took {} seconds '
+                        .format(datetime.timedelta(seconds=time.time() - start_time)))
 
     training_data = np.vstack(training_data)
     training_labels = np.concatenate(training_labels)
