@@ -9,12 +9,12 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.insert(0, ROOT_DIR)
 
 import time
-import pandas as pd
 import logging
 from lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
 from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.preprocessing import extract_marker_indices, read_fcs_data
 from lib.utils import build_logger
+from lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from lib.model import CellGan
 from lib.plotting import plot_marker_distributions, plot_loss
 from datetime import datetime as dt
@@ -138,6 +138,11 @@ def main():
     parser.add_argument('--num_iter', dest='num_iterations', type=int,
                         default=10000, help='Number of iterations to run the GAN')
 
+    # Testing specific
+
+    parser.add_argument('--num_samples', dest='num_samples', type=int,
+                        default=1000, help='Number of samples to generate while testing')
+
     args = parser.parse_args()
 
     with open(args.fcs_file, 'r') as f:
@@ -147,17 +152,13 @@ def main():
         markers_of_interest = json.load(f)
 
     # Setup the output directory
-    # --------------------------
-
     experiment_name = dt.now().strftime('%d-%m_%H-%M-%S')
     output_dir = os.path.join(args.output_dir, experiment_name)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Logger properties
-    # -----------------
-
+    # Build logger
     cellgan_logger = build_logger(out_dir=output_dir, logging_format='%(message)s',
                                   level=logging.INFO)
 
@@ -170,8 +171,6 @@ def main():
     training_data = list()
     training_labels = list() # These are not just for training, just for checking later
     celltype_added = 0
-
-    weights_subpopulations = list()
 
     for file in fcs_files_of_interest:
 
@@ -190,8 +189,6 @@ def main():
                 training_labels.append([celltype_added] * num_cells_in_file)
                 celltype_added += 1
 
-                weights_subpopulations.append(num_cells_in_file)
-
                 training_data.append(processed_data)
                 cellgan_logger.info('File {} loaded and processed'.format(file))
 
@@ -201,24 +198,26 @@ def main():
             AttributeError
 
     cellgan_logger.info("Loading and processing completed.")
-    cellgan_logger.info('Time taken: %0.3f seconds ' % datetime.timedelta(seconds=time.time() - start_time))
+    cellgan_logger.info('TIMING: File loading and processing took %0.3f seconds '
+                        % datetime.timedelta(seconds=time.time() - start_time))
 
     training_data = np.vstack(training_data)
     training_labels = np.concatenate(training_labels)
 
+    # Actual subpopulation weights
+    weights_subpopulations = compute_frequency(labels=training_labels, weighted=True)
+
     cellgan_logger.info("Computing outlier scores for each cell...")
-    weights_subpopulations = np.array(weights_subpopulations)/np.sum(weights_subpopulations)
     outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
     cellgan_logger.info("Outlier scores computed.")
 
-    # Initializing the CellGan model
-    # ------------------------------
-
+    # Sampling filters for CellCnn Ensemble
     cellgan_logger.info("Sampling filters for the CellCnn Ensemble...")
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
                             high=args.d_filters_max)
     cellgan_logger.info("Filters for the CellCnn Ensemble sampled.")
-
+    
+    # Sampling num pooled for CellCnn Ensemble
     cellgan_logger.info("Sampling number of cells to be pooled...")
     d_pooled = get_num_pooled(num_cell_cnns=args.num_cell_cnns,
                               num_cells_per_input=args.num_cells_per_input)
@@ -231,6 +230,7 @@ def main():
     else:
         num_experts = args.num_experts
 
+    # Initialize CellGan
     cellgan_logger.info('Building CellGan...')
 
     model = CellGan(noise_size=args.noise_size, moe_sizes=args.moe_sizes,
@@ -271,8 +271,6 @@ def main():
     model_path = os.path.join(output_dir, 'model.ckpt')
 
     # Write hparams to text file (for reproducibility later)
-    # ------------------------------------------------------
-
     cellgan_logger.info('Saving hyperparameters...')
     write_hparams_to_file(out_dir=output_dir, hparams=model_hparams)
     cellgan_logger.info('Hyperparameters saved.')
@@ -282,11 +280,8 @@ def main():
     cellgan_logger.info("Starting our experiments with {} subpopulations \n".format(num_subpopulations))
     cellgan_logger.info("Number of filters in the CellCnn Ensemble are: {}".format(d_filters))
     cellgan_logger.info("number of cells pooled in the CellCnn Ensemble are: {} \n".format(d_pooled))
-    cellgan_logger.info("The subpopulation weights are {} \n".format(weights_subpopulations))
 
     # Training the Gan
-    # ----------------
-
     discriminator_loss = list()
     generator_loss = list()
 
@@ -297,19 +292,14 @@ def main():
         for iteration in range(args.num_iterations):
 
             # Discriminator Training
-            # ----------------------
-
             model.set_train(True)
 
             for _ in range(args.num_critic):
 
-                real_batch = generate_subset(inputs=training_data,
-                                             num_cells_per_input=args.num_cells_per_input,
-                                             weights=outlier_scores,
-                                             batch_size=args.batch_size,
-                                             return_indices=False)
-
-                # TODO: Add real data subpopulation frequency
+                real_batch, indices_batch = \
+                    generate_subset(inputs=training_data, num_cells_per_input=args.num_cells_per_input,
+                                    weights=outlier_scores, batch_size=args.batch_size,
+                                    return_indices=True)
 
                 noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
                                        num_cells_per_input=args.num_cells_per_input)
@@ -332,8 +322,6 @@ def main():
                     raise NotImplementedError('Support for wgan-gp not implemented yet.')
 
             # Generator training
-            # ------------------
-
             noise_batch = sample_z(batch_size=args.batch_size, noise_size=args.noise_size,
                                    num_cells_per_input=args.num_cells_per_input)
 
@@ -349,15 +337,23 @@ def main():
 
                 model.set_train(False)
 
+                frequency_sampled_batch = compute_frequency(labels=training_labels[indices_batch],
+                                                            weighted=True)
+
+                # Iteration number and losses
                 cellgan_logger.info("We are at iteration: {}".format(iteration + 1))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info("Load Balancing Loss: {}".format(moe_loss))
 
-                # Fake Data
-                # ---------
+                # Actual weights & sampled weights
+                cellgan_logger.info("The actual subpopulation weights are: {}"
+                                    .format(weights_subpopulations))
+                cellgan_logger.info("Weights after outlier based sampling: {} \n".
+                                    format(frequency_sampled_batch))
 
-                num_samples = 1000
+                # Sample fake data for testing
+                num_samples = args.num_samples
                 noise_sample = sample_z(batch_size=1, num_cells_per_input=num_samples,
                                         noise_size=args.noise_size)
 
@@ -368,15 +364,8 @@ def main():
                 fake_samples = fake_samples.reshape(num_samples, len(markers_of_interest))
 
                 fake_sample_experts = np.argmax(gates, axis=1)
-                num_experts_used = len(np.unique(fake_sample_experts))
 
-                # TODO: Add real and fake data subpopulation frequency to logger
-
-                cellgan_logger.info("Number of experts used: {} \n".format(num_experts_used))
-
-                # Real Data
-                # ---------
-
+                # Sample real data for testing
                 real_samples, indices = generate_subset(inputs=training_data,
                                                         num_cells_per_input=num_samples,
                                                         weights=None,
@@ -386,15 +375,29 @@ def main():
                 indices = np.reshape(indices, real_samples.shape[0])
                 real_sample_subs = training_labels[indices]
 
+                # Compute expert assignments based on KS test
+                expert_assignments = \
+                    assign_expert_to_subpopulation(real_data=real_samples, real_labels=real_sample_subs,
+                                                   fake_data=fake_samples, expert_labels=fake_sample_experts,
+                                                   num_experts=num_experts, num_subpopulations=num_subpopulations)
+                
+                # Compute learnt subpopulation weights
+                learnt_subpopulation_weights = \
+                    compute_learnt_subpopulation_weights(expert_labels=fake_sample_experts,
+                                                         expert_assignments=expert_assignments,
+                                                         num_subpopulations=num_subpopulations)
+
+                cellgan_logger.info("The actual subpopulation weights are: {}"
+                                    .format(weights_subpopulations))
+                cellgan_logger.info("The learnt subpopulation weights are: {} \n"
+                                    .format(learnt_subpopulation_weights))
+
                 # Save loss plot
-                # --------------
                 cellgan_logger.info("Saving loss plot")
                 plot_loss(out_dir=output_dir, disc_loss=discriminator_loss, gen_loss=generator_loss)
                 cellgan_logger.info("Loss plot saved.")
 
                 # Plot marker distributions
-                # -------------------------
-
                 cellgan_logger.info("Adding marker distribution plots...")
                 plot_marker_distributions(out_dir=output_dir, real_subset=real_samples,
                                           fake_subset=fake_samples, real_subset_labels=real_sample_subs,
@@ -408,6 +411,8 @@ def main():
                 saver = tf.train.Saver()
                 save_path = saver.save(sess, model_path)
                 cellgan_logger.info("Model saved at {}".format(save_path))
+
+                cellgan_logger.info("########################################## \n")
 
 
 if __name__ == '__main__':
