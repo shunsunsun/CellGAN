@@ -313,15 +313,19 @@ def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
 def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_subpopulations):
 
     expert_weights = compute_frequency(labels=expert_labels, weighted=True)
-    learnt_subpopulation_weights = dict()
+    learnt_subpopulation_weights = {subpopulation: 0 for subpopulation in range(num_subpopulations)}
 
     for subpopulation in range(num_subpopulations):
 
         if subpopulation not in expert_assignments:
             learnt_subpopulation_weights[subpopulation] = 0
+            continue
         else:
             which_experts = np.where(expert_assignments == subpopulation)[0]
             for expert in which_experts:
-                learnt_subpopulation_weights += expert_weights[expert]
+                try:
+                    learnt_subpopulation_weights[subpopulation] += expert_weights[expert]
+                except:
+                    KeyError
 
     return learnt_subpopulation_weights
