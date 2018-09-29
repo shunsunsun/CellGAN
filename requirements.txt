@@ -1,9 +1,8 @@
-six==1.11.0
+scipy==1.1.0
+FlowIO==0.9
 tensorflow==1.5.0
 numpy==1.14.3
-FlowIO==0.9
-scipy==1.1.0
+six==1.11.0
 matplotlib==1.5.3
 FlowCal==1.2.0
-fcm==0.9.1
 scikit_learn==0.20.0
