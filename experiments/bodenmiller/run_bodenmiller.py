@@ -142,7 +142,7 @@ def main():
     # Testing specific
 
     parser.add_argument('--num_samples', dest='num_samples', type=int,
-                        default=1000, help='Number of samples to generate while testing')
+                        help='Number of samples to generate while testing')
 
     args = parser.parse_args()
 
@@ -208,10 +208,6 @@ def main():
     # Actual subpopulation weights
     weights_subpopulations = compute_frequency(labels=training_labels, weighted=True)
 
-    cellgan_logger.info("Computing outlier scores for each cell...")
-    outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
-    cellgan_logger.info("Outlier scores computed.\n")
-
     # Sampling filters for CellCnn Ensemble
     cellgan_logger.info("Sampling filters for the CellCnn Ensemble...")
     d_filters = get_filters(num_cell_cnns=args.num_cell_cnns, low=args.d_filters_min,
@@ -230,6 +226,11 @@ def main():
         num_experts = num_subpopulations
     else:
         num_experts = args.num_experts
+
+    if not args.num_samples:
+        num_samples = training_data.shape[0]
+    else:
+        num_samples = args.num_samples
 
     # Initialize CellGan
     cellgan_logger.info('Building CellGan...')
@@ -291,6 +292,11 @@ def main():
         sess.run(tf.global_variables_initializer())
 
         for iteration in range(args.num_iterations):
+
+            cellgan_logger.info("Computing outlier scores for each cell...")
+            subset_size = np.random.randint(low=20, high=50)
+            outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp', subset_size=subset_size)
+            cellgan_logger.info("Outlier scores computed.\n")
 
             # Discriminator Training
             model.set_train(True)
@@ -354,7 +360,6 @@ def main():
                                     format(frequency_sampled_batch))
 
                 # Sample fake data for testing
-                num_samples = args.num_samples
                 noise_sample = sample_z(batch_size=1, num_cells_per_input=num_samples,
                                         noise_size=args.noise_size)
 
@@ -369,7 +374,7 @@ def main():
                 # Sample real data for testing
                 real_samples, indices = generate_subset(inputs=training_data,
                                                         num_cells_per_input=num_samples,
-                                                        weights=None,
+                                                        weights=None, #Should I add weights differently?
                                                         batch_size=1,
                                                         return_indices=True)
                 real_samples = real_samples.reshape(num_samples, len(markers_of_interest))

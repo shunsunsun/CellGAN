@@ -172,12 +172,13 @@ def generate_subset(inputs, num_cells_per_input, batch_size, weights=None, retur
         return subset
 
 
-def compute_outlier_weights(inputs, method='q_sp'):
+def compute_outlier_weights(inputs, method='q_sp', subset_size=DEFAULT_SUBSET_SIZE):
 
     """
     Returns the outlier weights computed for the inputs using the method specified
     :param inputs: np.ndarray, dataset comprised of cells to be used for training
     :param method: what method to use for outlier computation (default q_sp)
+    :param subset_size: Size of the randomly sampled subset to compute outliers
     :return:
     """
 
@@ -185,7 +186,6 @@ def compute_outlier_weights(inputs, method='q_sp'):
         raise NotImplementedError('Other outlier methods are not implemented currently')
 
     else:
-        subset_size = DEFAULT_SUBSET_SIZE
 
         if subset_size < inputs.shape[0]:
             subset_indices = np.random.choice(inputs.shape[0], size=subset_size, replace=False)
@@ -257,6 +257,7 @@ def compute_frequency(labels, weighted=False):
     label_counts = Counter(labels)
 
     if not weighted:
+        label_counts = dict(sorted(label_counts.items(), key=lambda x: x[0]))
         return label_counts
 
     else:
@@ -264,6 +265,8 @@ def compute_frequency(labels, weighted=False):
         for key in label_counts:
             label_counts[key] = label_counts[key]/label_sum
             label_counts[key] = label_counts[key].round(4)
+
+        label_counts = dict(sorted(label_counts.items(), key=lambda x: x[0]))
 
         return label_counts
 
@@ -352,7 +355,7 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_
     """
 
     expert_weights = compute_frequency(labels=expert_labels, weighted=True)
-    learnt_subpopulation_weights = {subpopulation: 0 for subpopulation in range(num_subpopulations)}
+    learnt_subpopulation_weights = {subpopulation: 0.0 for subpopulation in range(num_subpopulations)}
 
     for subpopulation in range(num_subpopulations):
 
@@ -365,5 +368,10 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_
                     learnt_subpopulation_weights[subpopulation] += expert_weights[expert]
                 except:
                     KeyError
+
+    for key in learnt_subpopulation_weights:
+        learnt_subpopulation_weights[key] = np.round(learnt_subpopulation_weights[key], 4)
+
+    learnt_subpopulation_weights = dict(sorted(learnt_subpopulation_weights.items(), key=lambda x: x[0]))
 
     return learnt_subpopulation_weights
