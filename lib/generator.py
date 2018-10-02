@@ -130,6 +130,8 @@ class CellGanGen(object):
                 k=self.hparams['num_top'],
                 pass_x=True,
                 loss_coef=self.hparams['moe_loss_coef'],
+                noisy_gating=self.gating['noisy'],
+                noise_eps=self.gating['noise_eps'],
                 name="g_moe"
             )
 
