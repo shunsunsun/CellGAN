@@ -293,10 +293,8 @@ def main():
 
         for iteration in range(args.num_iterations):
 
-            cellgan_logger.info("Computing outlier scores for each cell...")
             subset_size = np.random.randint(low=20, high=50)
             outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp', subset_size=subset_size)
-            cellgan_logger.info("Outlier scores computed.\n")
 
             # Discriminator Training
             model.set_train(True)
