@@ -1000,6 +1000,8 @@ def local_moe(x,
               pass_x=True,
               pass_gates=False,
               additional_dispatch_params=None,
+              noisy_gating=True,
+              noise_eps=1e-2,
               name=None):
   """Call a local mixture of experts.
 
@@ -1037,8 +1039,8 @@ def local_moe(x,
         train,
         k,
         initializer=tf.zeros_initializer(),
-        noisy_gating=True,
-        noise_epsilon=1e-2)
+        noisy_gating=noisy_gating,
+        noise_epsilon=noise_eps)
     # This magic object helps us shuffle data between datashards and experts.
     dispatcher = SparseDispatcher(num_experts, gates)
 

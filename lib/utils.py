@@ -20,7 +20,7 @@ initializers['xavier'] = xav_init
 initializers['normal'] = normal_init
 initializers['zeros'] = zero_init
 
-DEFAULT_SUBSET_SIZE = 20
+DEFAULT_SUBSET_SIZE = 50
 
 
 def f_trans(x, c):
@@ -263,6 +263,7 @@ def compute_frequency(labels, weighted=False):
         label_sum = np.sum(list(label_counts.values()))
         for key in label_counts:
             label_counts[key] = label_counts[key]/label_sum
+            label_counts[key] = label_counts[key].round(4)
 
         return label_counts
 
