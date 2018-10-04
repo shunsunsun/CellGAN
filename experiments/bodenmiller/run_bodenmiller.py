@@ -195,8 +195,8 @@ def main():
 
             else:
                 continue
-        except:
-            AttributeError
+        except AttributeError:
+            pass
 
     cellgan_logger.info("Loading and processing completed.")
     cellgan_logger.info('TIMING: File loading and processing took {} seconds \n'

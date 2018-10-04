@@ -31,8 +31,8 @@ def read_fcs_data(file_path):
 
         return FCSFile(data=np.array(loaded_fcs), channels=channels)
 
-    except:
-        KeyError
+    except KeyError:
+        pass
 
 
 def extract_marker_indices(fcs_data, markers_of_interest):
