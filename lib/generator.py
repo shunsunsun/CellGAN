@@ -1,11 +1,9 @@
-
 import tensorflow as tf
 from lib.utils import initializers
 from lib.expert_utils import ffn_expert_fn, local_moe
 
 
 class CellGanGen(object):
-
     """
     Creates an object of CellGanGen, which is the generator class for CellGan.
 
@@ -36,8 +34,16 @@ class CellGanGen(object):
 
     """
 
-    def __init__(self, moe_sizes, num_experts, num_markers, num_filters, noisy_gating,
-                 noise_epsilon, num_top, moe_loss_coef=100, init_method='xavier'):
+    def __init__(self,
+                 moe_sizes,
+                 num_experts,
+                 num_markers,
+                 num_filters,
+                 noisy_gating,
+                 noise_epsilon,
+                 num_top,
+                 moe_loss_coef=100,
+                 init_method='xavier'):
 
         self.experts = dict()
         self.input_features = dict()
@@ -64,7 +70,6 @@ class CellGanGen(object):
         self.load = None
 
     def build_gen(self, inputs, train, reuse=tf.AUTO_REUSE, print_shape=False):
-
         """
         Builds the generator architecture, when invoked the first time. Generates data from
         learnt distribution otherwise.
@@ -87,9 +92,7 @@ class CellGanGen(object):
             # Reshape inputs to 1d convolutional layer
             # Expected Shape: (batch_size*num_cells, noise_size, 1)
             conv1_input = tf.reshape(
-                inputs,
-                shape=[batch_size * num_cells, noise_size, 1]
-            )
+                inputs, shape=[batch_size * num_cells, noise_size, 1])
 
             # Output from Convolutional Layer 1
             # Expected Shape: (batch_size*num_cells, 1, num_filters)
@@ -106,8 +109,7 @@ class CellGanGen(object):
             # Expected Shape: (batch_size*num_cells, num_filters)
             reshaped_conv1_output = tf.reshape(
                 g_conv1,
-                shape=[batch_size*num_cells, self.hparams['num_filters']]
-            )
+                shape=[batch_size * num_cells, self.hparams['num_filters']])
 
             # Get the moe_input_size
             self.moe_input_size = int(reshaped_conv1_output.shape[-1])
@@ -117,8 +119,7 @@ class CellGanGen(object):
                 input_size=self.moe_input_size,
                 hidden_sizes=self.hparams['moe_sizes'],
                 output_size=self.hparams['num_markers'],
-                hidden_activation=tf.nn.leaky_relu
-            )
+                hidden_activation=tf.nn.leaky_relu)
 
             # Run the mixture of experts module
             # moe_output expected shape: (batch_size*num_cells, num_markers)
@@ -132,15 +133,13 @@ class CellGanGen(object):
                 loss_coef=self.hparams['moe_loss_coef'],
                 noisy_gating=self.gating['noisy'],
                 noise_eps=self.gating['noise_eps'],
-                name="g_moe"
-            )
+                name="g_moe")
 
             # Reshape the moe_output
             # Expected shape: (batch_size, num_cells, num_markers)
             reshaped_moe_output = tf.reshape(
                 moe_output,
-                shape=[batch_size, num_cells, self.hparams['num_markers']]
-            )
+                shape=[batch_size, num_cells, self.hparams['num_markers']])
 
             # Checking shapes
             if print_shape:
@@ -149,7 +148,8 @@ class CellGanGen(object):
                 print("---------")
                 print("Convolutional layer input shape: ", conv1_input.shape)
                 print("Convolutional layer output shape: ", g_conv1.shape)
-                print("Convolutional layer output reshaped: ", reshaped_conv1_output.shape)
+                print("Convolutional layer output reshaped: ",
+                      reshaped_conv1_output.shape)
                 print("Moe output shape: ", moe_output.shape)
                 print("Reshaped moe output shape: ", reshaped_moe_output.shape)
                 print()
@@ -157,7 +157,6 @@ class CellGanGen(object):
         return reshaped_moe_output
 
     def get_moe_input_size(self):
-
         """ Returns the number of input neurons in an expert"""
 
         return self.moe_input_size
@@ -165,8 +164,16 @@ class CellGanGen(object):
 
 if __name__ == '__main__':
 
-    testCellGanGen = CellGanGen(moe_sizes=[100, 100], num_experts=10, num_markers=5, num_filters=10,
-                                num_top=1, noisy_gating=True, noise_epsilon=0.05)
+    testCellGanGen = CellGanGen(
+        moe_sizes=[100, 100],
+        num_experts=10,
+        num_markers=5,
+        num_filters=10,
+        num_top=1,
+        noisy_gating=True,
+        noise_epsilon=0.05)
 
-    test_inputs = tf.placeholder(dtype=tf.float32, name='test_input', shape=[None, None, 20])
-    testCellGanGen.build_gen(inputs=test_inputs, train=False, reuse=tf.AUTO_REUSE, print_shape=True)
+    test_inputs = tf.placeholder(
+        dtype=tf.float32, name='test_input', shape=[None, None, 20])
+    testCellGanGen.build_gen(
+        inputs=test_inputs, train=False, reuse=tf.AUTO_REUSE, print_shape=True)

@@ -3,7 +3,6 @@ from lib.discriminator import CellCnn
 
 
 class CellCnnEnsemble(object):
-
     """
        Creates an object of class CellCnnEnsemble, which is the discriminator for CellGan
 
@@ -32,7 +31,8 @@ class CellCnnEnsemble(object):
 
        """
 
-    def __init__(self, d_filters, d_pooled, coeff_l1, coeff_l2, coeff_act, dropout_prob, init_method):
+    def __init__(self, d_filters, d_pooled, coeff_l1, coeff_l2, coeff_act,
+                 dropout_prob, init_method):
 
         # Add CellCnnEnsemble hyperparameters
         self.hparams = dict()
@@ -47,7 +47,6 @@ class CellCnnEnsemble(object):
         self._initialize_ensemble()
 
     def _initialize_ensemble(self):
-
         """
         Initialize each CellCnn in the ensemble
         """
@@ -56,7 +55,7 @@ class CellCnnEnsemble(object):
 
         for i in range(len(self.hparams['d_filters'])):
 
-            scope_name = "CellCnn_" + str(i+1)
+            scope_name = "CellCnn_" + str(i + 1)
 
             self.CellCnns[i] = CellCnn(
                 num_filters=self.hparams['d_filters'][i],
@@ -66,11 +65,9 @@ class CellCnnEnsemble(object):
                 coeff_l1=self.hparams['coeff_l1'],
                 coeff_l2=self.hparams['coeff_l2'],
                 coeff_act=self.hparams['coeff_act'],
-                dropout_prob=self.hparams['dropout_prob']
-            )
+                dropout_prob=self.hparams['dropout_prob'])
 
     def _build_ensemble(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
-
         """
         Setup the architecture of each CellCnn and return fake/real scores for inputs,
         when invoked the first time. Reuses existing architecture and returns scores, otherwise.
@@ -89,9 +86,6 @@ class CellCnnEnsemble(object):
             for i in self.CellCnns:
 
                 self.outputs[i] = self.CellCnns[i].build_disc(
-                    inputs=inputs,
-                    reuse=reuse,
-                    print_shape=print_shape
-                )
+                    inputs=inputs, reuse=reuse, print_shape=print_shape)
 
         return self.outputs

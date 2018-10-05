@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 from lib.utils import initializers
 
@@ -6,7 +5,6 @@ DEFAULT_HIDDEN_UNITS = 256
 
 
 class CellCnn(object):
-
     """
     Creates an object of class CellCnn.
 
@@ -38,8 +36,8 @@ class CellCnn(object):
 
     """
 
-    def __init__(self, num_filters, coeff_l1, coeff_l2,
-                 coeff_act, num_pooled, dropout_prob, init_method, scope_name):
+    def __init__(self, num_filters, coeff_l1, coeff_l2, coeff_act, num_pooled,
+                 dropout_prob, init_method, scope_name):
 
         self.scope_name = scope_name
 
@@ -55,7 +53,6 @@ class CellCnn(object):
         self.init = initializers[init_method]
 
     def build_disc(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
-
         """
         Setup the discriminator architecture and return fake/real scores of each input, when
         invoked the first time. Reuses existing architecture and returns scores, otherwise.
@@ -76,8 +73,7 @@ class CellCnn(object):
             # Input to the convolutional layer
             conv1_input = tf.reshape(
                 inputs,
-                shape=[batch_size*num_cells_per_input, num_markers, 1]
-            )
+                shape=[batch_size * num_cells_per_input, num_markers, 1])
 
             # Output from Convolutional Layer 1
             # Expected shape: (batch_size*num_cells_per_input, 1, num_filters)
@@ -95,9 +91,7 @@ class CellCnn(object):
             # Reshaped output for downstream layers
             # Expected Shape: (batch_size, num_filters, num_cells_per_input]
             reshaped_d_conv1 = tf.reshape(
-                d_conv1,
-                shape=[batch_size, num_filters, num_cells_per_input]
-            )
+                d_conv1, shape=[batch_size, num_filters, num_cells_per_input])
 
             # Setting an appropriate value of number of cells to be pooled
             if num_cells_per_input == 1:
@@ -108,18 +102,14 @@ class CellCnn(object):
             # Pooling layer (Instead of filter dimension, we pool on cell dimension)
             # Expected Shape: (batch_size, num_filters, num_pooled)
             d_pooled1, indices = tf.nn.top_k(
-                input=reshaped_d_conv1,
-                k=k,
-                name='d_pooled1')
+                input=reshaped_d_conv1, k=k, name='d_pooled1')
 
             num_pooled = int(d_pooled1.shape[-1])
 
             # Reshaping pooling layer output
             # Expected Shape: (batch_size*num_pooled, num_filters)
             reshaped_d_pooled1 = tf.reshape(
-                d_pooled1,
-                shape=[batch_size*num_pooled, num_filters]
-            )
+                d_pooled1, shape=[batch_size * num_pooled, num_filters])
 
             # Dense Layer 1
             # Expected Shape: (batch_size*num_pooled, DEFAULT_HIDDEN_UNITS)
@@ -127,25 +117,19 @@ class CellCnn(object):
                 inputs=reshaped_d_pooled1,
                 units=DEFAULT_HIDDEN_UNITS,
                 name="d_dense1",
-                activation=tf.nn.leaky_relu
-            )
+                activation=tf.nn.leaky_relu)
 
             # Dropout Layer 1
             # Expected Shape: (batch_size*num_pooled, DEFAULT_HIDDEN_UNITS)
             d_dropout1 = tf.layers.dropout(
                 inputs=d_dense1,
                 rate=self.hparams['dropout_prob'],
-                name="d_dropout1"
-            )
+                name="d_dropout1")
 
             # Dense Layer 2
             # Expected Shape = (batch_size*num_pooled, 1)
             d_dense2 = tf.layers.dense(
-                inputs=d_dropout1,
-                units=1,
-                name='d_dense2',
-                activation=None
-            )
+                inputs=d_dropout1, units=1, name='d_dense2', activation=None)
 
             # For checking shapes
             if print_shape:
@@ -154,9 +138,11 @@ class CellCnn(object):
                 print("-------------")
                 print("Convolutional layer input shape: ", conv1_input.shape)
                 print("Convolutional layer output shape: ", d_conv1.shape)
-                print("Convolutional layer output reshaped: ", reshaped_d_conv1.shape)
+                print("Convolutional layer output reshaped: ",
+                      reshaped_d_conv1.shape)
                 print("Pooling layer output shape: ", d_pooled1.shape)
-                print("Pooling layer output reshaped: ", reshaped_d_pooled1.shape)
+                print("Pooling layer output reshaped: ",
+                      reshaped_d_pooled1.shape)
                 print("Dense Layer 1 output shape: ", d_dense1.shape)
                 print("Dense Layer 2 output shape: ", d_dense2.shape)
                 print()
@@ -166,10 +152,18 @@ class CellCnn(object):
 
 if __name__ == '__main__':
 
-    testCellCnn = CellCnn(num_filters=10, coeff_l1=0, coeff_l2=0, coeff_act=0,
-                          dropout_prob=0.5, num_pooled=70,
-                          init_method='xavier', scope_name='testCellCnn')
+    testCellCnn = CellCnn(
+        num_filters=10,
+        coeff_l1=0,
+        coeff_l2=0,
+        coeff_act=0,
+        dropout_prob=0.5,
+        num_pooled=70,
+        init_method='xavier',
+        scope_name='testCellCnn')
 
-    test_input = tf.placeholder(dtype=tf.float32, name='test_input', shape=[64, 100, 5])
+    test_input = tf.placeholder(
+        dtype=tf.float32, name='test_input', shape=[64, 100, 5])
 
-    testCellCnn.build_disc(inputs=test_input, reuse=tf.AUTO_REUSE, print_shape=True)
+    testCellCnn.build_disc(
+        inputs=test_input, reuse=tf.AUTO_REUSE, print_shape=True)

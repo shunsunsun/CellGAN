@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 import numpy as np
 import os
@@ -30,11 +29,10 @@ def f_trans(x, c):
     :param c: float, cofactor
     :return: transformed data
     """
-    return np.arcsinh(1./c * x)
+    return np.arcsinh(1. / c * x)
 
 
 def get_filters(num_cell_cnns, low, high):
-
     """
     Get a list of number of filters to be used for the CellCnn Ensemble.
     The filters are chosen randomly between limits specified by low and high
@@ -51,7 +49,6 @@ def get_filters(num_cell_cnns, low, high):
 
 
 def get_num_pooled(num_cell_cnns, num_cells_per_input):
-
     """
     Returns a list of number of cells to be pooled
 
@@ -60,13 +57,13 @@ def get_num_pooled(num_cell_cnns, num_cells_per_input):
     :return: num_pooled, a numpy array of size num_cell_cnns
     """
 
-    num_pooled = np.random.randint(low=1, high=num_cells_per_input, size=num_cell_cnns)
+    num_pooled = np.random.randint(
+        low=1, high=num_cells_per_input, size=num_cell_cnns)
 
     return num_pooled
 
 
 def sample_z(batch_size, num_cells_per_input, noise_size):
-    
     """
     Generates noise, which is input to the generator based on given shape
     :param batch_size: int, mini-batch size
@@ -78,14 +75,16 @@ def sample_z(batch_size, num_cells_per_input, noise_size):
     noise = np.random.multivariate_normal(
         mean=np.zeros(shape=noise_size),
         cov=np.eye(N=noise_size),
-        size=(batch_size, num_cells_per_input)
-    )
+        size=(batch_size, num_cells_per_input))
 
     return noise
 
 
-def build_gaussian_training_set(num_subpopulations, num_cells, weights_subpopulations, num_markers, shuffle=False):
-    
+def build_gaussian_training_set(num_subpopulations,
+                                num_cells,
+                                weights_subpopulations,
+                                num_markers,
+                                shuffle=False):
     """
     Build a training set of desired number of subpopulations and number of cells in the training set.
     The number of markers and the weights of the subpopulations are also specified. Returns each cell's
@@ -108,24 +107,29 @@ def build_gaussian_training_set(num_subpopulations, num_cells, weights_subpopula
 
     data = list()
     y_sub_populations = list()
-    
+
     for i in range(num_subpopulations):
         temp_num_cells = int(num_cells * weights_subpopulations[i])
-        data.append(np.random.normal(means[i], sd[i], (temp_num_cells, num_markers)))
+        data.append(
+            np.random.normal(means[i], sd[i], (temp_num_cells, num_markers)))
         y_sub_populations.append([i + 1] * temp_num_cells)
     data = np.vstack(data)
     y_sub_populations = np.concatenate(y_sub_populations)
-    
+
     if shuffle:
-        ind_shuffle = np.random.choice(range(num_cells), num_cells, replace=False)
+        ind_shuffle = np.random.choice(
+            range(num_cells), num_cells, replace=False)
         data = data[ind_shuffle, :]
         y_sub_populations = y_sub_populations[ind_shuffle]
 
     return data, y_sub_populations
 
 
-def get_batches(inputs, batch_size, num_batches, num_cells_per_input, weights=None):
-
+def get_batches(inputs,
+                batch_size,
+                num_batches,
+                num_cells_per_input,
+                weights=None):
     """
     Generate multiple batches of training data from given inputs
     :param inputs: input numpy array of shape (num_cells, num_markers)
@@ -136,14 +140,22 @@ def get_batches(inputs, batch_size, num_batches, num_cells_per_input, weights=No
     :return:
     """
 
-    batches = [generate_subset(inputs=inputs, num_cells_per_input=num_cells_per_input,
-                               batch_size=batch_size, weights=weights, return_indices=False)
-               for _ in range(num_batches)]
+    batches = [
+        generate_subset(
+            inputs=inputs,
+            num_cells_per_input=num_cells_per_input,
+            batch_size=batch_size,
+            weights=weights,
+            return_indices=False) for _ in range(num_batches)
+    ]
     return batches
 
 
-def generate_subset(inputs, num_cells_per_input, batch_size, weights=None, return_indices=False):
-
+def generate_subset(inputs,
+                    num_cells_per_input,
+                    batch_size,
+                    weights=None,
+                    return_indices=False):
     """
     Returns a random subset from input data of shape (batch_size, num_cells_per_input, num_markers)
     :param inputs: numpy array, the input ndarray to sample from
@@ -157,10 +169,17 @@ def generate_subset(inputs, num_cells_per_input, batch_size, weights=None, retur
     num_cells_total = inputs.shape[0]
 
     if weights is not None:
-        indices = np.random.choice(num_cells_total, size=batch_size * num_cells_per_input, replace=True, p=weights)
+        indices = np.random.choice(
+            num_cells_total,
+            size=batch_size * num_cells_per_input,
+            replace=True,
+            p=weights)
 
     else:
-        indices = np.random.choice(num_cells_total, size=batch_size * num_cells_per_input, replace=True)
+        indices = np.random.choice(
+            num_cells_total,
+            size=batch_size * num_cells_per_input,
+            replace=True)
 
     subset = inputs[indices, ]
     subset = np.reshape(subset, newshape=(batch_size, num_cells_per_input, -1))
@@ -172,8 +191,9 @@ def generate_subset(inputs, num_cells_per_input, batch_size, weights=None, retur
         return subset
 
 
-def compute_outlier_weights(inputs, method='q_sp', subset_size=DEFAULT_SUBSET_SIZE):
-
+def compute_outlier_weights(inputs,
+                            method='q_sp',
+                            subset_size=DEFAULT_SUBSET_SIZE):
     """
     Returns the outlier weights computed for the inputs using the method specified
     :param inputs: np.ndarray, dataset comprised of cells to be used for training
@@ -183,14 +203,17 @@ def compute_outlier_weights(inputs, method='q_sp', subset_size=DEFAULT_SUBSET_SI
     """
 
     if method != 'q_sp':
-        raise NotImplementedError('Other outlier methods are not implemented currently')
+        raise NotImplementedError(
+            'Other outlier methods are not implemented currently')
 
     else:
 
         if subset_size < inputs.shape[0]:
-            subset_indices = np.random.choice(inputs.shape[0], size=subset_size, replace=False)
+            subset_indices = np.random.choice(
+                inputs.shape[0], size=subset_size, replace=False)
         else:
-            subset_indices = np.random.choice(inputs.shape[0], size=subset_size, replace=True)
+            subset_indices = np.random.choice(
+                inputs.shape[0], size=subset_size, replace=True)
 
         sampled_subset = inputs[subset_indices, :]
         dists = np.zeros(inputs.shape[0])
@@ -198,13 +221,12 @@ def compute_outlier_weights(inputs, method='q_sp', subset_size=DEFAULT_SUBSET_SI
         for index in range(len(dists)):
             dists[index] = np.min(np.square(inputs[index] - sampled_subset))
 
-        outlier_weights = dists/dists.sum()
+        outlier_weights = dists / dists.sum()
 
         return outlier_weights
 
 
 def write_hparams_to_file(out_dir, hparams):
-
     """
     Writes hyperparameters used in experiment to specified output directory
 
@@ -221,7 +243,6 @@ def write_hparams_to_file(out_dir, hparams):
 
 
 def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
-
     """
     Setup the logger
     :param out_dir: Output directory
@@ -244,7 +265,6 @@ def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
 
 
 def compute_frequency(labels, weighted=False):
-
     """
     Computes the frequency of unique labels
     :param labels: list of labels
@@ -263,7 +283,7 @@ def compute_frequency(labels, weighted=False):
     else:
         label_sum = np.sum(list(label_counts.values()))
         for key in label_counts:
-            label_counts[key] = label_counts[key]/label_sum
+            label_counts[key] = label_counts[key] / label_sum
             label_counts[key] = label_counts[key].round(4)
 
         label_counts = dict(sorted(label_counts.items(), key=lambda x: x[0]))
@@ -271,8 +291,8 @@ def compute_frequency(labels, weighted=False):
         return label_counts
 
 
-def compute_ks(real_data, real_labels, fake_data, expert_labels, num_subpopulations, num_experts):
-
+def compute_ks(real_data, real_labels, fake_data, expert_labels,
+               num_subpopulations, num_experts):
     """
     Computes ks_sums for each expert with each subpopulation by adding tests over individual markers
 
@@ -293,7 +313,7 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels, num_subpopulati
         expert_indices = np.where(expert_labels == expert)[0]
 
         if len(expert_indices) == 0:
-            ks_sums.append([0]*num_subpopulations)
+            ks_sums.append([0] * num_subpopulations)
             continue
 
         else:
@@ -308,8 +328,11 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels, num_subpopulati
 
                 else:
                     real_data_by_sub = real_data[subs_indices]
-                    ks_sum = np.sum([ks_2samp(real_data_by_sub[:, marker], fake_data_by_expert[:, marker])[0]
-                                     for marker in range(real_data.shape[-1])])
+                    ks_sum = np.sum([
+                        ks_2samp(real_data_by_sub[:, marker],
+                                 fake_data_by_expert[:, marker])[0]
+                        for marker in range(real_data.shape[-1])
+                    ])
 
                     ks_sum_per_expert.append(ks_sum)
 
@@ -322,8 +345,8 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels, num_subpopulati
 
 
 def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
-                                   expert_labels, num_subpopulations, num_experts):
-
+                                   expert_labels, num_subpopulations,
+                                   num_experts):
     """
     Assigns each expert to the subpopulation it learns based on sum of KS_tests for each marker
     :param real_data: Real cells, each with marker profile
@@ -335,17 +358,21 @@ def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
     :return: expert_assignments, an array of size num_experts
     """
 
-    ks_sums = compute_ks(real_data=real_data, real_labels=real_labels, fake_data=fake_data,
-                         expert_labels=expert_labels, num_subpopulations=num_subpopulations,
-                         num_experts=num_experts)
+    ks_sums = compute_ks(
+        real_data=real_data,
+        real_labels=real_labels,
+        fake_data=fake_data,
+        expert_labels=expert_labels,
+        num_subpopulations=num_subpopulations,
+        num_experts=num_experts)
 
     expert_assignments = np.argmin(ks_sums, axis=1)
 
     return expert_assignments
 
 
-def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_subpopulations):
-
+def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
+                                         num_subpopulations):
     """
     Computes learnt subpopulation weights
     :param expert_labels: expert labels corresponding to fake data
@@ -355,7 +382,10 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_
     """
 
     expert_weights = compute_frequency(labels=expert_labels, weighted=True)
-    learnt_subpopulation_weights = {subpopulation: 0.0 for subpopulation in range(num_subpopulations)}
+    learnt_subpopulation_weights = {
+        subpopulation: 0.0
+        for subpopulation in range(num_subpopulations)
+    }
 
     for subpopulation in range(num_subpopulations):
 
@@ -365,13 +395,16 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments, num_
             which_experts = np.where(expert_assignments == subpopulation)[0]
             for expert in which_experts:
                 try:
-                    learnt_subpopulation_weights[subpopulation] += expert_weights[expert]
+                    learnt_subpopulation_weights[
+                        subpopulation] += expert_weights[expert]
                 except:
                     KeyError
 
     for key in learnt_subpopulation_weights:
-        learnt_subpopulation_weights[key] = np.round(learnt_subpopulation_weights[key], 4)
+        learnt_subpopulation_weights[key] = np.round(
+            learnt_subpopulation_weights[key], 4)
 
-    learnt_subpopulation_weights = dict(sorted(learnt_subpopulation_weights.items(), key=lambda x: x[0]))
+    learnt_subpopulation_weights = dict(
+        sorted(learnt_subpopulation_weights.items(), key=lambda x: x[0]))
 
     return learnt_subpopulation_weights

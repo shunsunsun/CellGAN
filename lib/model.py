@@ -1,11 +1,9 @@
-
 import tensorflow as tf
 from lib.generator import CellGanGen
 from lib.ensemble import CellCnnEnsemble
 
 
 class CellGan(object):
-
     """Creates an object of type CellGan
 
     Args:
@@ -77,23 +75,51 @@ class CellGan(object):
 
     """
 
-    def __init__(self, noise_size, moe_sizes, batch_size, num_markers=10, num_experts=3,
-                 g_filters=10, d_filters=[10], d_pooled=[3], coeff_l1=0, coeff_l2=1e-4,
-                 coeff_act=0, dropout_prob=0.5, lr=1e-4, num_top=1, noisy_gating=True,
-                 noise_eps=1e-2, beta_1=0.9, beta_2=0.999, reg_lambda=10, train=False,
-                 init_method='xavier', type_gan='normal', load_balancing=False):
+    def __init__(self,
+                 noise_size,
+                 moe_sizes,
+                 batch_size,
+                 num_markers=10,
+                 num_experts=3,
+                 g_filters=10,
+                 d_filters=[10],
+                 d_pooled=[3],
+                 coeff_l1=0,
+                 coeff_l2=1e-4,
+                 coeff_act=0,
+                 dropout_prob=0.5,
+                 lr=1e-4,
+                 num_top=1,
+                 noisy_gating=True,
+                 noise_eps=1e-2,
+                 beta_1=0.9,
+                 beta_2=0.999,
+                 reg_lambda=10,
+                 train=False,
+                 init_method='xavier',
+                 type_gan='normal',
+                 load_balancing=False):
 
         # Initialize the generator and discriminator
 
-        self.generator = CellGanGen(moe_sizes=moe_sizes, num_markers=num_markers,
-                                    num_experts=num_experts, num_top=num_top,
-                                    noisy_gating=noisy_gating, noise_epsilon=noise_eps,
-                                    num_filters=g_filters, init_method=init_method)
+        self.generator = CellGanGen(
+            moe_sizes=moe_sizes,
+            num_markers=num_markers,
+            num_experts=num_experts,
+            num_top=num_top,
+            noisy_gating=noisy_gating,
+            noise_epsilon=noise_eps,
+            num_filters=g_filters,
+            init_method=init_method)
 
-        self.discriminator = CellCnnEnsemble(d_filters=d_filters, coeff_l1=coeff_l1,
-                                             coeff_l2=coeff_l2, coeff_act=coeff_act,
-                                             d_pooled=d_pooled, init_method=init_method,
-                                             dropout_prob=dropout_prob)
+        self.discriminator = CellCnnEnsemble(
+            d_filters=d_filters,
+            coeff_l1=coeff_l1,
+            coeff_l2=coeff_l2,
+            coeff_act=coeff_act,
+            d_pooled=d_pooled,
+            init_method=init_method,
+            dropout_prob=dropout_prob)
         self.num_discriminators = len(d_filters)
 
         self.noise_size = noise_size
@@ -121,7 +147,6 @@ class CellGan(object):
         self._solvers()
 
     def set_train(self, train):
-
         """
         Toggle for whether we are in training or testing stage, controls noise addition
         to gating weights
@@ -133,7 +158,6 @@ class CellGan(object):
         self.hparams['train'] = train
 
     def _create_placeholders(self):
-
         """
         Creates the placeholders Z and X for the input
         noise and real samples
@@ -155,7 +179,6 @@ class CellGan(object):
         self.shape = tf.shape(self.X)
 
     def _generate_sample(self, reuse=tf.AUTO_REUSE):
-
         """
         Generates a sample from the generator for given input noise
         :param reuse: bool/reuse object, indicating whether to reuse existing
@@ -163,12 +186,12 @@ class CellGan(object):
         :return: output, a tensor of expected shape (batch_size, num_cells_per_input, num_markers)
         """
 
-        output = self.generator.build_gen(inputs=self.Z, train=self.hparams['train'], reuse=reuse)
+        output = self.generator.build_gen(
+            inputs=self.Z, train=self.hparams['train'], reuse=reuse)
 
         return output
 
     def _eval_disc(self, inputs, reuse):
-
         """
         Returns the fake/real scores from the CellCnn Ensemble
         :param inputs: tensor, of shape (batch_size, num_cells_per_input, num_markers)
@@ -181,7 +204,6 @@ class CellGan(object):
         return output
 
     def _calc_grad_norm(self, ys, xs):
-
         """
         Calculates the gradient, used in the wgan-gp loss formulation
         :param ys: input tensor (shape: batch_size, num_cells_per_input, num_markers)
@@ -192,7 +214,6 @@ class CellGan(object):
         self.grad_norm = tf.sqrt(tf.reduce_sum(self.grad**2, axis=1))
 
     def _compute_loss(self):
-
         """
         Computes the loss for the GAN based on the type used
 
@@ -201,7 +222,8 @@ class CellGan(object):
 
         self.g_sample = self._generate_sample()
         self.d_real = self._eval_disc(inputs=self.X, reuse=tf.AUTO_REUSE)
-        self.d_fake = self._eval_disc(inputs=self.g_sample, reuse=tf.AUTO_REUSE)
+        self.d_fake = self._eval_disc(
+            inputs=self.g_sample, reuse=tf.AUTO_REUSE)
 
         if self.hparams['type_gan'] == 'normal':
 
@@ -254,25 +276,27 @@ class CellGan(object):
             self.d_loss_real = 0
             self.d_loss_fake = 0
 
-            epsilon = tf.random_uniform(shape=[self.batch_size], minval=0, maxval=1)
-            self.x_hat = epsilon*tf.transpose(self.X) + (1 - epsilon)*tf.transpose(self.g_sample)
+            epsilon = tf.random_uniform(
+                shape=[self.batch_size], minval=0, maxval=1)
+            self.x_hat = epsilon * tf.transpose(
+                self.X) + (1 - epsilon) * tf.transpose(self.g_sample)
             self.x_hat = tf.transpose(self.x_hat)
 
-            self.d_x_hat = self._eval_disc(inputs=self.x_hat, reuse=tf.AUTO_REUSE)
+            self.d_x_hat = self._eval_disc(
+                inputs=self.x_hat, reuse=tf.AUTO_REUSE)
 
         else:
-            raise NotImplementedError('Loss for GAN of type {} is not implemented'.format(self.hparams['type_gan']))
+            raise NotImplementedError(
+                'Loss for GAN of type {} is not implemented'.format(
+                    self.hparams['type_gan']))
 
         self.d_params = tf.get_collection(
-            key=tf.GraphKeys.GLOBAL_VARIABLES,
-            scope="CellCnnEnsemble")
+            key=tf.GraphKeys.GLOBAL_VARIABLES, scope="CellCnnEnsemble")
 
         self.g_params = tf.get_collection(
-            key=tf.GraphKeys.GLOBAL_VARIABLES,
-            scope="CellGanGen")
+            key=tf.GraphKeys.GLOBAL_VARIABLES, scope="CellGanGen")
 
     def _solvers(self):
-
         """
         Optimizers used for minimizing GAN loss
 
@@ -283,40 +307,39 @@ class CellGan(object):
 
         if self.hparams['type_gan'] == 'wgan':
 
-            d_opt = tf.train.RMSPropOptimizer(learning_rate=self.rms_prop_optimizer['learning_rate'])
-            g_opt = tf.train.RMSPropOptimizer(learning_rate=self.rms_prop_optimizer['learning_rate'])
+            d_opt = tf.train.RMSPropOptimizer(
+                learning_rate=self.rms_prop_optimizer['learning_rate'])
+            g_opt = tf.train.RMSPropOptimizer(
+                learning_rate=self.rms_prop_optimizer['learning_rate'])
 
             self.d_solver = d_opt.minimize(
-                loss=self.d_loss,
-                var_list=self.d_params)
+                loss=self.d_loss, var_list=self.d_params)
 
             self.g_solver = g_opt.minimize(
-                loss=self.g_loss,
-                var_list=self.g_params)
+                loss=self.g_loss, var_list=self.g_params)
 
-            self.clip_D = [p.assign(tf.clip_by_value(p, -0.01, 0.01))
-                           for p in self.d_params]
+            self.clip_D = [
+                p.assign(tf.clip_by_value(p, -0.01, 0.01))
+                for p in self.d_params
+            ]
 
         # Use Adam Optimizer otherwise
         else:
             d_opt = tf.train.AdamOptimizer(
                 learning_rate=self.adam_optimizer['learning_rate'],
                 beta1=self.adam_optimizer['beta_1'],
-                beta2=self.adam_optimizer['beta_2']
-            )
+                beta2=self.adam_optimizer['beta_2'])
             g_opt = tf.train.AdamOptimizer(
                 learning_rate=self.adam_optimizer['learning_rate'],
                 beta1=self.adam_optimizer['beta_1'],
-                beta2=self.adam_optimizer['beta_2']
-            )
+                beta2=self.adam_optimizer['beta_2'])
 
             self.d_solver = d_opt.minimize(
-                loss=self.d_loss,
-                var_list=self.d_params)
+                loss=self.d_loss, var_list=self.d_params)
 
             self.g_solver = g_opt.minimize(
-                loss=self.g_loss,
-                var_list=self.g_params)
+                loss=self.g_loss, var_list=self.g_params)
+
 
 # TODO: Add the formulations for KL divergence, heat maps, pre-training clustering
 # TODO: Fix plotting issues

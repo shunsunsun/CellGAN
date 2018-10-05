@@ -11,7 +11,6 @@ FCSFile = namedtuple('FCSFile', ['data', 'channels'])
 
 
 def read_fcs_data(file_path):
-
     """
     Reads flow cytometry from given path and stores it in the FCSFile named tuple
     :param file_path: path to given .fcs file
@@ -36,7 +35,6 @@ def read_fcs_data(file_path):
 
 
 def extract_marker_indices(fcs_data, markers_of_interest):
-
     """
     Extracts indices of markers of interest from given FCSFile namedtuple
     :param fcs_data: FCSFile named_tuple
@@ -44,6 +42,8 @@ def extract_marker_indices(fcs_data, markers_of_interest):
     :return: marker_indices, list of indices where corresponding markers are present
     """
 
-    marker_indices = [fcs_data.channels.index(name) for name in markers_of_interest]
+    marker_indices = [
+        fcs_data.channels.index(name) for name in markers_of_interest
+    ]
 
     return marker_indices

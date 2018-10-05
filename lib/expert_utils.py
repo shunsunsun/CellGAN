@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Utilities for creating Sparsely-Gated Mixture-of-Experts Layers.
 
 See "Outrageously Large Neural Networks"
@@ -43,7 +42,7 @@ DEFAULT_DEV_STRING = "existing_device"
     python_grad_func=lambda x, dy: tf.convert_to_tensor(dy),
     shape_func=lambda op: [op.inputs[0].get_shape()])
 def convert_gradient_to_tensor(x):
-  """Identity operation whose gradient is converted to a `Tensor`.
+    """Identity operation whose gradient is converted to a `Tensor`.
 
   Currently, the gradient to `tf.concat` is particularly expensive to
   compute if dy is an `IndexedSlices` (a lack of GPU implementation
@@ -59,11 +58,11 @@ def convert_gradient_to_tensor(x):
   Returns:
     The input `Tensor`.
   """
-  return x
+    return x
 
 
 def add_scope(scope=None, scope_fn=None):
-  """Return a decorator which add a TF name/variable scope to a function.
+    """Return a decorator which add a TF name/variable scope to a function.
 
   Note that the function returned by the decorator accept an additional 'name'
   parameter, which can overwritte the name scope given when the function is
@@ -76,29 +75,30 @@ def add_scope(scope=None, scope_fn=None):
   Returns:
     fct: the add_scope decorator
   """
-  def decorator(f):
 
-    @functools.wraps(f)
-    def decorated(*args, **kwargs):
-      name = kwargs.pop("name", None)  # Python 2 hack for keyword only args
-      with scope_fn(name or scope or f.__name__):
-        return f(*args, **kwargs)
+    def decorator(f):
+        @functools.wraps(f)
+        def decorated(*args, **kwargs):
+            name = kwargs.pop("name",
+                              None)  # Python 2 hack for keyword only args
+            with scope_fn(name or scope or f.__name__):
+                return f(*args, **kwargs)
 
-    return decorated
+        return decorated
 
-  return decorator
+    return decorator
 
 
 def add_var_scope(scope=None):
-  return add_scope(scope, scope_fn=tf.variable_scope)
+    return add_scope(scope, scope_fn=tf.variable_scope)
 
 
 def add_name_scope(scope=None):
-  return add_scope(scope, scope_fn=tf.name_scope)
+    return add_scope(scope, scope_fn=tf.name_scope)
 
 
 def _add_variable_proxy_methods(var, proxy_tensor):
-  """Proxy methods of underlying variable.
+    """Proxy methods of underlying variable.
 
   This enables our custom getters to still work with, e.g., batch norm.
 
@@ -106,12 +106,12 @@ def _add_variable_proxy_methods(var, proxy_tensor):
     var: Variable to proxy
     proxy_tensor: Tensor that is identity of var
   """
-  proxy_tensor.read_value = lambda: tf.identity(proxy_tensor)
-  proxy_tensor.assign_sub = var.assign_sub
+    proxy_tensor.read_value = lambda: tf.identity(proxy_tensor)
+    proxy_tensor.assign_sub = var.assign_sub
 
 
 class Parallelism(object):
-  """Helper class for creating sets of parallel function calls.
+    """Helper class for creating sets of parallel function calls.
 
   The purpose of this class is to replace this code:
 
@@ -128,13 +128,13 @@ class Parallelism(object):
       e, f = expert_utils.Parallelism(devices)(func, a, b, c)
   """
 
-  def __init__(self,
-               device_names_or_functions,
-               reuse=True,
-               caching_devices=None,
-               daisy_chain_variables=False,
-               ps_devices=None):
-    """Create a Parallelism.
+    def __init__(self,
+                 device_names_or_functions,
+                 reuse=True,
+                 caching_devices=None,
+                 daisy_chain_variables=False,
+                 ps_devices=None):
+        """Create a Parallelism.
 
     Args:
       device_names_or_functions: A list of length n, containing device names
@@ -150,16 +150,16 @@ class Parallelism(object):
     Returns:
       a Parallelism.
     """
-    assert device_names_or_functions
-    self._devices = device_names_or_functions
-    self._n = len(device_names_or_functions)
-    self._reuse = reuse
-    self._caching_devices = self._maybe_repeat(caching_devices)
-    self._daisy_chain_variables = daisy_chain_variables
-    self._ps_devices = ps_devices or [""]
+        assert device_names_or_functions
+        self._devices = device_names_or_functions
+        self._n = len(device_names_or_functions)
+        self._reuse = reuse
+        self._caching_devices = self._maybe_repeat(caching_devices)
+        self._daisy_chain_variables = daisy_chain_variables
+        self._ps_devices = ps_devices or [""]
 
-  def __call__(self, fn, *args, **kwargs):
-    """A parallel set of function calls (using the specified devices).
+    def __call__(self, fn, *args, **kwargs):
+        """A parallel set of function calls (using the specified devices).
 
     Args:
       fn: a function or a list of n functions.
@@ -172,107 +172,108 @@ class Parallelism(object):
       either a single list of length n (if fn does not return a tuple), or a
       tuple of lists of length n (if fn returns a tuple).
     """
-    # Construct lists or args and kwargs for each function.
-    if args:
-      my_args = transpose_list_of_lists(
-          [self._maybe_repeat(arg) for arg in args])
-    else:
-      my_args = [[] for _ in xrange(self.n)]
-    my_kwargs = [{} for _ in xrange(self.n)]
-    for k, v in six.iteritems(kwargs):
-      vals = self._maybe_repeat(v)
-      for i in xrange(self.n):
-        my_kwargs[i][k] = vals[i]
-
-    # Construct lists of functions.
-    fns = self._maybe_repeat(fn)
-
-    # Now make the parallel call.
-    outputs = []
-    cache = {}
-    tensor_to_var = {}
-    for i in xrange(self.n):
-
-      def daisy_chain_getter(getter, name, *args, **kwargs):
-        """Get a variable and cache in a daisy chain."""
-        device_var_key = (self._devices[i], name)
-        if device_var_key in cache:
-          # if we have the variable on the correct device, return it.
-          return cache[device_var_key]
-        if name in cache:
-          # if we have it on a different device, copy it from the last device
-          last_device_v = cache[name]
-          var = tensor_to_var[last_device_v]
-          v = tf.identity(last_device_v)
+        # Construct lists or args and kwargs for each function.
+        if args:
+            my_args = transpose_list_of_lists(
+                [self._maybe_repeat(arg) for arg in args])
         else:
-          var = getter(name, *args, **kwargs)
-          v = tf.identity(var._ref())  # pylint: disable=protected-access
+            my_args = [[] for _ in xrange(self.n)]
+        my_kwargs = [{} for _ in xrange(self.n)]
+        for k, v in six.iteritems(kwargs):
+            vals = self._maybe_repeat(v)
+            for i in xrange(self.n):
+                my_kwargs[i][k] = vals[i]
 
-        # keep track of the original variable
-        tensor_to_var[v] = var
-        _add_variable_proxy_methods(tensor_to_var[v], v)
-        # update the cache
-        cache[name] = v
-        cache[device_var_key] = v
-        return v
+        # Construct lists of functions.
+        fns = self._maybe_repeat(fn)
 
-      # Variable scope will not reset caching_device on reused variables,
-      # so we make a custom getter that uses identity to cache the variable.
-      # pylint: disable=cell-var-from-loop
-      def caching_getter(getter, name, *args, **kwargs):
-        """Cache variables on device."""
-        key = (self._caching_devices[i], name)
-        if key in cache:
-          return cache[key]
+        # Now make the parallel call.
+        outputs = []
+        cache = {}
+        tensor_to_var = {}
+        for i in xrange(self.n):
 
-        v = getter(name, *args, **kwargs)
-        with tf.device(self._caching_devices[i]):
-          ret = tf.identity(v._ref())  # pylint: disable=protected-access
-        _add_variable_proxy_methods(v, ret)
-        cache[key] = ret
-        return ret
+            def daisy_chain_getter(getter, name, *args, **kwargs):
+                """Get a variable and cache in a daisy chain."""
+                device_var_key = (self._devices[i], name)
+                if device_var_key in cache:
+                    # if we have the variable on the correct device, return it.
+                    return cache[device_var_key]
+                if name in cache:
+                    # if we have it on a different device, copy it from the last device
+                    last_device_v = cache[name]
+                    var = tensor_to_var[last_device_v]
+                    v = tf.identity(last_device_v)
+                else:
+                    var = getter(name, *args, **kwargs)
+                    v = tf.identity(var._ref())  # pylint: disable=protected-access
 
-      if self._daisy_chain_variables:
-        custom_getter = daisy_chain_getter
-      elif self._caching_devices[i]:
-        custom_getter = caching_getter
-      else:
-        custom_getter = None
-      # pylint: enable=cell-var-from-loop
-      with tf.name_scope("parallel_%d" % i):
-        with tf.variable_scope(
-            tf.get_variable_scope() if self._reuse else "parallel_%d" % i,
-            reuse=True if i > 0 and self._reuse else None,
-            caching_device=self._caching_devices[i],
-            custom_getter=custom_getter):
-          # TODO(noam, epot, avaswani)
-          # Allows for passing no device in case you want to default to the
-          # existing device. This is needed when we put all experts on a single
-          # device, for example in local_moe.
-          if self._devices[i] != DEFAULT_DEV_STRING:
-            with tf.device(self._devices[i]):
-              outputs.append(fns[i](*my_args[i], **my_kwargs[i]))
-          else:
-            outputs.append(fns[i](*my_args[i], **my_kwargs[i]))
-    if isinstance(outputs[0], tuple):
-      outputs = list(zip(*outputs))
-      outputs = tuple([list(o) for o in outputs])
-    return outputs
+                # keep track of the original variable
+                tensor_to_var[v] = var
+                _add_variable_proxy_methods(tensor_to_var[v], v)
+                # update the cache
+                cache[name] = v
+                cache[device_var_key] = v
+                return v
 
-  @property
-  def n(self):
-    return self._n
+            # Variable scope will not reset caching_device on reused variables,
+            # so we make a custom getter that uses identity to cache the variable.
+            # pylint: disable=cell-var-from-loop
+            def caching_getter(getter, name, *args, **kwargs):
+                """Cache variables on device."""
+                key = (self._caching_devices[i], name)
+                if key in cache:
+                    return cache[key]
 
-  @property
-  def devices(self):
-    return self._devices
+                v = getter(name, *args, **kwargs)
+                with tf.device(self._caching_devices[i]):
+                    ret = tf.identity(v._ref())  # pylint: disable=protected-access
+                _add_variable_proxy_methods(v, ret)
+                cache[key] = ret
+                return ret
 
-  @property
-  def ps_devices(self):
-    return self._ps_devices
+            if self._daisy_chain_variables:
+                custom_getter = daisy_chain_getter
+            elif self._caching_devices[i]:
+                custom_getter = caching_getter
+            else:
+                custom_getter = None
+            # pylint: enable=cell-var-from-loop
+            with tf.name_scope("parallel_%d" % i):
+                with tf.variable_scope(
+                        tf.get_variable_scope()
+                        if self._reuse else "parallel_%d" % i,
+                        reuse=True if i > 0 and self._reuse else None,
+                        caching_device=self._caching_devices[i],
+                        custom_getter=custom_getter):
+                    # TODO(noam, epot, avaswani)
+                    # Allows for passing no device in case you want to default to the
+                    # existing device. This is needed when we put all experts on a single
+                    # device, for example in local_moe.
+                    if self._devices[i] != DEFAULT_DEV_STRING:
+                        with tf.device(self._devices[i]):
+                            outputs.append(fns[i](*my_args[i], **my_kwargs[i]))
+                    else:
+                        outputs.append(fns[i](*my_args[i], **my_kwargs[i]))
+        if isinstance(outputs[0], tuple):
+            outputs = list(zip(*outputs))
+            outputs = tuple([list(o) for o in outputs])
+        return outputs
 
-  def _maybe_repeat(self, x):
-    """Utility function for processing arguments that are singletons or lists.
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def devices(self):
+        return self._devices
+
+    @property
+    def ps_devices(self):
+        return self._ps_devices
+
+    def _maybe_repeat(self, x):
+        """Utility function for processing arguments that are singletons or lists.
 
     Args:
       x: either a list of self.n elements, or not a list.
@@ -280,15 +281,15 @@ class Parallelism(object):
     Returns:
       a list of self.n elements.
     """
-    if isinstance(x, list):
-      assert len(x) == self.n
-      return x
-    else:
-      return [x] * self.n
+        if isinstance(x, list):
+            assert len(x) == self.n
+            return x
+        else:
+            return [x] * self.n
 
 
 def _rowwise_unsorted_segment_sum(values, indices, n):
-  """UnsortedSegmentSum on each row.
+    """UnsortedSegmentSum on each row.
 
   Args:
     values: a `Tensor` with shape `[batch_size, k]`.
@@ -297,15 +298,16 @@ def _rowwise_unsorted_segment_sum(values, indices, n):
   Returns:
     A `Tensor` with the same type as `values` and shape `[batch_size, n]`.
   """
-  batch, k = tf.unstack(tf.shape(indices), num=2)
-  indices_flat = tf.reshape(indices, [-1]) + tf.div(tf.range(batch * k), k) * n
-  ret_flat = tf.unsorted_segment_sum(
-      tf.reshape(values, [-1]), indices_flat, batch * n)
-  return tf.reshape(ret_flat, [batch, n])
+    batch, k = tf.unstack(tf.shape(indices), num=2)
+    indices_flat = tf.reshape(indices,
+                              [-1]) + tf.div(tf.range(batch * k), k) * n
+    ret_flat = tf.unsorted_segment_sum(
+        tf.reshape(values, [-1]), indices_flat, batch * n)
+    return tf.reshape(ret_flat, [batch, n])
 
 
 def _normal_distribution_cdf(x, stddev):
-  """Evaluates the CDF of the normal distribution.
+    """Evaluates the CDF of the normal distribution.
 
   Normal distribution with mean 0 and standard deviation stddev,
   evaluated at x=x.
@@ -320,12 +322,12 @@ def _normal_distribution_cdf(x, stddev):
     a `Tensor` with the same shape as `x`.
 
   """
-  return 0.5 * (1.0 + tf.erf(x / (math.sqrt(2) * stddev + 1e-20)))
+    return 0.5 * (1.0 + tf.erf(x / (math.sqrt(2) * stddev + 1e-20)))
 
 
-def _prob_in_top_k(
-    clean_values, noisy_values, noise_stddev, noisy_top_values, k):
-  """Helper function to NoisyTopKGating.
+def _prob_in_top_k(clean_values, noisy_values, noise_stddev, noisy_top_values,
+                   k):
+    """Helper function to NoisyTopKGating.
 
   Computes the probability that value is in top k, given different random noise.
 
@@ -347,32 +349,32 @@ def _prob_in_top_k(
   Returns:
     a `Tensor` of shape [batch, n].
   """
-  batch = tf.shape(clean_values)[0]
-  m = tf.shape(noisy_top_values)[1]
-  top_values_flat = tf.reshape(noisy_top_values, [-1])
-  # we want to compute the threshold that a particular value would have to
-  # exceed in order to make the top k.  This computation differs depending
-  # on whether the value is already in the top k.
-  threshold_positions_if_in = tf.range(batch) * m + k
-  threshold_if_in = tf.expand_dims(
-      tf.gather(top_values_flat, threshold_positions_if_in), 1)
-  is_in = tf.greater(noisy_values, threshold_if_in)
-  if noise_stddev is None:
-    return tf.to_float(is_in)
-  threshold_positions_if_out = threshold_positions_if_in - 1
-  threshold_if_out = tf.expand_dims(
-      tf.gather(top_values_flat, threshold_positions_if_out), 1)
-  # is each value currently in the top k.
-  prob_if_in = _normal_distribution_cdf(clean_values - threshold_if_in,
-                                        noise_stddev)
-  prob_if_out = _normal_distribution_cdf(clean_values - threshold_if_out,
-                                         noise_stddev)
-  prob = tf.where(is_in, prob_if_in, prob_if_out)
-  return prob
+    batch = tf.shape(clean_values)[0]
+    m = tf.shape(noisy_top_values)[1]
+    top_values_flat = tf.reshape(noisy_top_values, [-1])
+    # we want to compute the threshold that a particular value would have to
+    # exceed in order to make the top k.  This computation differs depending
+    # on whether the value is already in the top k.
+    threshold_positions_if_in = tf.range(batch) * m + k
+    threshold_if_in = tf.expand_dims(
+        tf.gather(top_values_flat, threshold_positions_if_in), 1)
+    is_in = tf.greater(noisy_values, threshold_if_in)
+    if noise_stddev is None:
+        return tf.to_float(is_in)
+    threshold_positions_if_out = threshold_positions_if_in - 1
+    threshold_if_out = tf.expand_dims(
+        tf.gather(top_values_flat, threshold_positions_if_out), 1)
+    # is each value currently in the top k.
+    prob_if_in = _normal_distribution_cdf(clean_values - threshold_if_in,
+                                          noise_stddev)
+    prob_if_out = _normal_distribution_cdf(clean_values - threshold_if_out,
+                                           noise_stddev)
+    prob = tf.where(is_in, prob_if_in, prob_if_out)
+    return prob
 
 
 def cv_squared(x):
-  """The squared coefficient of variation of a sample.
+    """The squared coefficient of variation of a sample.
 
   Useful as a loss to encourage a positive distribution to be more uniform.
   Epsilons added for numerical stability.
@@ -384,15 +386,15 @@ def cv_squared(x):
   Returns:
     a `Scalar`.
   """
-  epsilon = 1e-10
-  float_size = tf.to_float(tf.size(x)) + epsilon
-  mean = tf.reduce_sum(x) / float_size
-  variance = tf.reduce_sum(tf.square(x - mean)) / float_size
-  return variance / (tf.square(mean) + epsilon)
+    epsilon = 1e-10
+    float_size = tf.to_float(tf.size(x)) + epsilon
+    mean = tf.reduce_sum(x) / float_size
+    variance = tf.reduce_sum(tf.square(x - mean)) / float_size
+    return variance / (tf.square(mean) + epsilon)
 
 
 def _gates_to_load(gates):
-  """Compute the true load per expert, given the gates.
+    """Compute the true load per expert, given the gates.
 
   The load is the number of examples for which the corresponding gate is >0.
 
@@ -401,11 +403,11 @@ def _gates_to_load(gates):
   Returns:
     a float32 `Tensor` of shape [n]
   """
-  return tf.reduce_sum(tf.to_float(gates > 0), 0)
+    return tf.reduce_sum(tf.to_float(gates > 0), 0)
 
 
 def _my_top_k(x, k):
-  """GPU-compatible version of top-k that works for very small constant k.
+    """GPU-compatible version of top-k that works for very small constant k.
 
   Calls argmax repeatedly.
 
@@ -422,18 +424,18 @@ def _my_top_k(x, k):
     values: a Tensor of shape [batch_size, k]
     indices: a int32 Tensor of shape [batch_size, k]
   """
-  if k > 10:
-    return tf.nn.top_k(x, k)
-  values = []
-  indices = []
-  depth = tf.shape(x)[1]
-  for i in xrange(k):
-    values.append(tf.reduce_max(x, 1))
-    argmax = tf.argmax(x, 1)
-    indices.append(argmax)
-    if i + 1 < k:
-      x += tf.one_hot(argmax, depth, -1e9)
-  return tf.stack(values, axis=1), tf.to_int32(tf.stack(indices, axis=1))
+    if k > 10:
+        return tf.nn.top_k(x, k)
+    values = []
+    indices = []
+    depth = tf.shape(x)[1]
+    for i in xrange(k):
+        values.append(tf.reduce_max(x, 1))
+        argmax = tf.argmax(x, 1)
+        indices.append(argmax)
+        if i + 1 < k:
+            x += tf.one_hot(argmax, depth, -1e9)
+    return tf.stack(values, axis=1), tf.to_int32(tf.stack(indices, axis=1))
 
 
 def noisy_top_k_gating(x,
@@ -444,7 +446,7 @@ def noisy_top_k_gating(x,
                        noisy_gating=True,
                        noise_epsilon=1e-2,
                        name=None):
-  """Noisy top-k gating.
+    """Noisy top-k gating.
 
   See paper: https://arxiv.org/abs/1701.06538.
 
@@ -462,49 +464,48 @@ def noisy_top_k_gating(x,
     gates: a Tensor with shape [batch_size, num_experts]
     load: a Tensor with shape [num_experts]
   """
-  with tf.variable_scope(name, default_name="noisy_top_k_gating"):
-    input_size = x.get_shape().as_list()[-1]
-    w_gate = tf.get_variable(
-        "w_gate", [input_size, num_experts], tf.float32, initializer)
-    if noisy_gating:
-      w_noise = tf.get_variable("w_noise",
-                                [input_size, num_experts], tf.float32,
-                                initializer)
-    clean_logits = tf.matmul(x, w_gate)
-    if noisy_gating:
-      raw_noise_stddev = tf.matmul(x, w_noise)
-      noise_stddev = ((tf.nn.softplus(raw_noise_stddev) + noise_epsilon) *
-                      (tf.to_float(train)))
-      noisy_logits = clean_logits + (
-          tf.random_normal(tf.shape(clean_logits)) * noise_stddev)
-      logits = noisy_logits
-      if should_generate_summaries():
-        tf.summary.histogram("noisy_logits", noisy_logits)
-        tf.summary.histogram("noise_stddev", noise_stddev)
-    else:
-      logits = clean_logits
-    top_logits, top_indices = _my_top_k(logits, min(k + 1, num_experts))
-    top_k_logits = tf.slice(top_logits, [0, 0], [-1, k])
-    top_k_indices = tf.slice(top_indices, [0, 0], [-1, k])
-    top_k_gates = tf.nn.softmax(top_k_logits)
-    # This will be a `Tensor` of shape `[batch_size, n]`, with zeros in the
-    # positions corresponding to all but the top k experts per example.
-    gates = _rowwise_unsorted_segment_sum(top_k_gates, top_k_indices,
-                                          num_experts)
-    if noisy_gating and k < num_experts:
-      load = tf.reduce_sum(
-          _prob_in_top_k(clean_logits, noisy_logits, noise_stddev, top_logits,
-                         k), 0)
-    else:
-      load = _gates_to_load(gates)
-    if should_generate_summaries():
-      tf.summary.histogram("importance", tf.reduce_sum(gates, 0))
-      tf.summary.histogram("load", load)
-    return gates, load
+    with tf.variable_scope(name, default_name="noisy_top_k_gating"):
+        input_size = x.get_shape().as_list()[-1]
+        w_gate = tf.get_variable("w_gate", [input_size, num_experts],
+                                 tf.float32, initializer)
+        if noisy_gating:
+            w_noise = tf.get_variable("w_noise", [input_size, num_experts],
+                                      tf.float32, initializer)
+        clean_logits = tf.matmul(x, w_gate)
+        if noisy_gating:
+            raw_noise_stddev = tf.matmul(x, w_noise)
+            noise_stddev = ((tf.nn.softplus(raw_noise_stddev) + noise_epsilon)
+                            * (tf.to_float(train)))
+            noisy_logits = clean_logits + (
+                tf.random_normal(tf.shape(clean_logits)) * noise_stddev)
+            logits = noisy_logits
+            if should_generate_summaries():
+                tf.summary.histogram("noisy_logits", noisy_logits)
+                tf.summary.histogram("noise_stddev", noise_stddev)
+        else:
+            logits = clean_logits
+        top_logits, top_indices = _my_top_k(logits, min(k + 1, num_experts))
+        top_k_logits = tf.slice(top_logits, [0, 0], [-1, k])
+        top_k_indices = tf.slice(top_indices, [0, 0], [-1, k])
+        top_k_gates = tf.nn.softmax(top_k_logits)
+        # This will be a `Tensor` of shape `[batch_size, n]`, with zeros in the
+        # positions corresponding to all but the top k experts per example.
+        gates = _rowwise_unsorted_segment_sum(top_k_gates, top_k_indices,
+                                              num_experts)
+        if noisy_gating and k < num_experts:
+            load = tf.reduce_sum(
+                _prob_in_top_k(clean_logits, noisy_logits, noise_stddev,
+                               top_logits, k), 0)
+        else:
+            load = _gates_to_load(gates)
+        if should_generate_summaries():
+            tf.summary.histogram("importance", tf.reduce_sum(gates, 0))
+            tf.summary.histogram("load", load)
+        return gates, load
 
 
 class PadRemover(object):
-  """Helper to remove padding from a tensor before sending to the experts.
+    """Helper to remove padding from a tensor before sending to the experts.
 
   The padding is computed for one reference tensor containing the padding mask
   and then can be applied to any other tensor of shape [dim_origin,...].
@@ -525,28 +526,28 @@ class PadRemover(object):
       ]
   """
 
-  def __init__(self, pad_mask):
-    """Compute and store the location of the padding.
+    def __init__(self, pad_mask):
+        """Compute and store the location of the padding.
 
     Args:
       pad_mask (tf.Tensor): Reference padding tensor of shape
         [batch_size,length] or [dim_origin] (dim_origin=batch_size*length)
         containing non-zeros positive values to indicate padding location.
     """
-    self.nonpad_ids = None
-    self.dim_origin = None
+        self.nonpad_ids = None
+        self.dim_origin = None
 
-    with tf.name_scope("pad_reduce/get_ids"):
-      pad_mask = tf.reshape(pad_mask, [-1])  # Flatten the batch
-      # nonpad_ids contains coordinates of zeros rows (as pad_mask is
-      # float32, checking zero equality is done with |x| < epsilon, with
-      # epsilon=1e-9 as standard, here pad_mask only contains positive values
-      # so tf.abs would be redundant)
-      self.nonpad_ids = tf.to_int32(tf.where(pad_mask < 1e-9))
-      self.dim_origin = tf.shape(pad_mask)[:1]
+        with tf.name_scope("pad_reduce/get_ids"):
+            pad_mask = tf.reshape(pad_mask, [-1])  # Flatten the batch
+            # nonpad_ids contains coordinates of zeros rows (as pad_mask is
+            # float32, checking zero equality is done with |x| < epsilon, with
+            # epsilon=1e-9 as standard, here pad_mask only contains positive values
+            # so tf.abs would be redundant)
+            self.nonpad_ids = tf.to_int32(tf.where(pad_mask < 1e-9))
+            self.dim_origin = tf.shape(pad_mask)[:1]
 
-  def remove(self, x):
-    """Remove padding from the given tensor.
+    def remove(self, x):
+        """Remove padding from the given tensor.
 
     Args:
       x (tf.Tensor): of shape [dim_origin,...]
@@ -554,20 +555,20 @@ class PadRemover(object):
     Returns:
       a tensor of shape [dim_compressed,...] with dim_compressed <= dim_origin
     """
-    with tf.name_scope("pad_reduce/remove"):
-      x_shape = x.get_shape().as_list()
-      x = tf.gather_nd(
-          x,
-          indices=self.nonpad_ids,
-      )
-      if not context.in_eager_mode():
-        # This is a hack but for some reason, gather_nd return a tensor of
-        # undefined shape, so the shape is set up manually
-        x.set_shape([None] + x_shape[1:])
-    return x
+        with tf.name_scope("pad_reduce/remove"):
+            x_shape = x.get_shape().as_list()
+            x = tf.gather_nd(
+                x,
+                indices=self.nonpad_ids,
+            )
+            if not context.in_eager_mode():
+                # This is a hack but for some reason, gather_nd return a tensor of
+                # undefined shape, so the shape is set up manually
+                x.set_shape([None] + x_shape[1:])
+        return x
 
-  def restore(self, x):
-    """Add padding back to the given tensor.
+    def restore(self, x):
+        """Add padding back to the given tensor.
 
     Args:
       x (tf.Tensor): of shape [dim_compressed,...]
@@ -576,18 +577,19 @@ class PadRemover(object):
       a tensor of shape [dim_origin,...] with dim_compressed >= dim_origin. The
       dim is restored from the original reference tensor
     """
-    with tf.name_scope("pad_reduce/restore"):
-      x = tf.scatter_nd(
-          indices=self.nonpad_ids,
-          updates=x,
-          shape=tf.concat([self.dim_origin, tf.shape(x)[1:]], axis=0),
-      )
-    return x
+        with tf.name_scope("pad_reduce/restore"):
+            x = tf.scatter_nd(
+                indices=self.nonpad_ids,
+                updates=x,
+                shape=tf.concat(
+                    [self.dim_origin, tf.shape(x)[1:]], axis=0),
+            )
+        return x
 
 
 @add_name_scope("map_ids")
 def map_ids(x, indices, map_fn):
-  """Apply a function to each coordinate ids of a multidimentional tensor.
+    """Apply a function to each coordinate ids of a multidimentional tensor.
 
   This allows to process each sequence of a batch independently. This is
   similar to tf.map_fn but with tensor where the batch dim has been flatten.
@@ -609,53 +611,54 @@ def map_ids(x, indices, map_fn):
   Returns:
     a tensor of same shape as x, where each elements has been processed
   """
-  indices = tf.reshape(indices, [-1])
+    indices = tf.reshape(indices, [-1])
 
-  t_i = tf.constant(0)
-  # batch_coordinates start at 0
-  t_batch_size = tf.reduce_max(indices) + 1
+    t_i = tf.constant(0)
+    # batch_coordinates start at 0
+    t_batch_size = tf.reduce_max(indices) + 1
 
-  # ta_stack_out will store the intermediate results for each individual id
-  # As alternative to tf.TensorArray, scatter_update could potentially be used
-  # but that would require an additional mutable tensor.
-  ta_stack_out = tf.TensorArray(
-      x.dtype,
-      size=t_batch_size,
-  )
+    # ta_stack_out will store the intermediate results for each individual id
+    # As alternative to tf.TensorArray, scatter_update could potentially be used
+    # but that would require an additional mutable tensor.
+    ta_stack_out = tf.TensorArray(
+        x.dtype,
+        size=t_batch_size,
+    )
 
-  # Then we iterate over each sequence individually and compute the
-  # transformation for each id
-  while_condition = lambda t_i, *args: tf.less(t_i, t_batch_size)
-  def body(t_i, ta_stack_out):
-    """Loop body."""
-    # Gather the ids
-    current_ids = tf.to_int32(tf.where(tf.equal(indices, t_i)))
-    t_row = tf.gather_nd(x, indices=current_ids)
+    # Then we iterate over each sequence individually and compute the
+    # transformation for each id
+    while_condition = lambda t_i, *args: tf.less(t_i, t_batch_size)
 
-    # TODO(epot): Should not call map_fn if t_row size is 0
+    def body(t_i, ta_stack_out):
+        """Loop body."""
+        # Gather the ids
+        current_ids = tf.to_int32(tf.where(tf.equal(indices, t_i)))
+        t_row = tf.gather_nd(x, indices=current_ids)
 
-    # Apply transformation to each id
-    # Restore batch_dim=1 as most function expect [batch_dim, length, ...] as
-    # input
-    t_row = tf.expand_dims(t_row, axis=0)
-    t_row = map_fn(t_row)
-    t_row = tf.squeeze(t_row, axis=0)  # Squeeze for concatenation
-    ta_stack_out = ta_stack_out.write(t_i, t_row)
+        # TODO(epot): Should not call map_fn if t_row size is 0
 
-    return [tf.add(t_i, 1), ta_stack_out]  # ++i
+        # Apply transformation to each id
+        # Restore batch_dim=1 as most function expect [batch_dim, length, ...] as
+        # input
+        t_row = tf.expand_dims(t_row, axis=0)
+        t_row = map_fn(t_row)
+        t_row = tf.squeeze(t_row, axis=0)  # Squeeze for concatenation
+        ta_stack_out = ta_stack_out.write(t_i, t_row)
 
-  # Run the loop, equivalent to:
-  # stack_out = []
-  # while i < batch_size:
-  #   stack_out.expand(map_fn(x[indices==i]))
-  _, ta_stack_out = tf.while_loop(while_condition, body, [t_i, ta_stack_out])
+        return [tf.add(t_i, 1), ta_stack_out]  # ++i
 
-  # Merge all results
-  return ta_stack_out.concat()
+    # Run the loop, equivalent to:
+    # stack_out = []
+    # while i < batch_size:
+    #   stack_out.expand(map_fn(x[indices==i]))
+    _, ta_stack_out = tf.while_loop(while_condition, body, [t_i, ta_stack_out])
+
+    # Merge all results
+    return ta_stack_out.concat()
 
 
 class SparseDispatcher(object):
-  """Helper for implementing a mixture of experts.
+    """Helper for implementing a mixture of experts.
 
   The purpose of this class is to create input minibatches for the
   experts and to combine the results of the experts to form a unified
@@ -694,8 +697,8 @@ class SparseDispatcher(object):
   `Tensor`s for expert i only the batch elements for which `gates[b, i] > 0`.
   """
 
-  def __init__(self, num_experts, gates):
-    """Create a SparseDispatcher.
+    def __init__(self, num_experts, gates):
+        """Create a SparseDispatcher.
 
     Args:
       num_experts: an integer.
@@ -704,19 +707,20 @@ class SparseDispatcher(object):
     Returns:
       a SparseDispatcher
     """
-    self._gates = gates
-    self._num_experts = num_experts
+        self._gates = gates
+        self._num_experts = num_experts
 
-    where = tf.to_int32(tf.where(tf.transpose(gates) > 0))
-    self._expert_index, self._batch_index = tf.unstack(where, num=2, axis=1)
-    self._part_sizes_tensor = tf.reduce_sum(tf.to_int32(gates > 0), [0])
-    self._nonzero_gates = tf.gather(
-        tf.reshape(self._gates, [-1]),
-        self._batch_index * num_experts + self._expert_index)
+        where = tf.to_int32(tf.where(tf.transpose(gates) > 0))
+        self._expert_index, self._batch_index = tf.unstack(
+            where, num=2, axis=1)
+        self._part_sizes_tensor = tf.reduce_sum(tf.to_int32(gates > 0), [0])
+        self._nonzero_gates = tf.gather(
+            tf.reshape(self._gates, [-1]),
+            self._batch_index * num_experts + self._expert_index)
 
-  @add_name_scope()
-  def dispatch(self, inp):
-    """Create one input Tensor for each expert.
+    @add_name_scope()
+    def dispatch(self, inp):
+        """Create one input Tensor for each expert.
 
     The `Tensor` for a expert `i` contains the slices of `inp` corresponding
     to the batch elements `b` where `gates[b, i] > 0`.
@@ -727,12 +731,12 @@ class SparseDispatcher(object):
       a list of `num_experts` `Tensor`s with shapes
         `[expert_batch_size_i, <extra_input_dims>]`.
     """
-    inp = tf.gather(inp, self._batch_index)
-    return tf.split(inp, self._part_sizes_tensor, 0, num=self._num_experts)
+        inp = tf.gather(inp, self._batch_index)
+        return tf.split(inp, self._part_sizes_tensor, 0, num=self._num_experts)
 
-  @add_name_scope()
-  def combine(self, expert_out, multiply_by_gates=True):
-    """Sum together the expert output, weighted by the gates.
+    @add_name_scope()
+    def combine(self, expert_out, multiply_by_gates=True):
+        """Sum together the expert output, weighted by the gates.
 
     The slice corresponding to a particular batch element `b` is computed
     as the sum over all experts `i` of the expert output, weighted by the
@@ -747,41 +751,47 @@ class SparseDispatcher(object):
     Returns:
       a `Tensor` with shape `[batch_size, <extra_output_dims>]`.
     """
-    # see comments on convert_gradient_to_tensor
-    stitched = convert_gradient_to_tensor(tf.concat(expert_out, 0))
-    if multiply_by_gates:
-      stitched *= tf.expand_dims(self._nonzero_gates, 1)
-    combined = tf.unsorted_segment_sum(stitched, self._batch_index,
-                                       tf.shape(self._gates)[0])
-    return combined
+        # see comments on convert_gradient_to_tensor
+        stitched = convert_gradient_to_tensor(tf.concat(expert_out, 0))
+        if multiply_by_gates:
+            stitched *= tf.expand_dims(self._nonzero_gates, 1)
+        combined = tf.unsorted_segment_sum(stitched, self._batch_index,
+                                           tf.shape(self._gates)[0])
+        return combined
 
-  def expert_to_gates(self):
-    """Gate values corresponding to the examples in the per-expert `Tensor`s.
+    def expert_to_gates(self):
+        """Gate values corresponding to the examples in the per-expert `Tensor`s.
 
     Returns:
       a list of `num_experts` one-dimensional `Tensor`s with type `tf.float32`
           and shapes `[expert_batch_size_i]`
     """
-    return tf.split(
-        self._nonzero_gates, self._part_sizes_tensor, 0, num=self._num_experts)
+        return tf.split(
+            self._nonzero_gates,
+            self._part_sizes_tensor,
+            0,
+            num=self._num_experts)
 
-  def expert_to_batch_indices(self):
-    """Batch indices corresponding to the examples in the per-expert `Tensor`s.
+    def expert_to_batch_indices(self):
+        """Batch indices corresponding to the examples in the per-expert `Tensor`s.
 
     Returns:
       a list of `num_experts` one-dimensional `Tensor`s with type `tf.int64`
           and shapes `[expert_batch_size_i]`
     """
-    return tf.split(
-        self._batch_index, self._part_sizes_tensor, 0, num=self._num_experts)
+        return tf.split(
+            self._batch_index,
+            self._part_sizes_tensor,
+            0,
+            num=self._num_experts)
 
-  @property
-  def part_sizes(self):
-    return self._part_sizes_tensor
+    @property
+    def part_sizes(self):
+        return self._part_sizes_tensor
 
 
 class DistributedSparseDispatcher(object):
-  """A distributed version of SparseDispatcher.
+    """A distributed version of SparseDispatcher.
 
   Instead of one batch of input examples, we simultaneously process
   a list of num_datashards batches of input examples.  The per-expert
@@ -792,8 +802,8 @@ class DistributedSparseDispatcher(object):
   `Tensor`s are created on those devices.  There is no single-device bottleneck.
   """
 
-  def __init__(self, data_parallelism, expert_parallelism, gates):
-    """Create a DistributedSparseDispatcher.
+    def __init__(self, data_parallelism, expert_parallelism, gates):
+        """Create a DistributedSparseDispatcher.
 
     Args:
       data_parallelism: a Parallelism object.
@@ -804,14 +814,14 @@ class DistributedSparseDispatcher(object):
     Returns:
       a DistributedSparseDispatcher
     """
-    self._gates = gates
-    self._dp = data_parallelism
-    self._ep = expert_parallelism
-    assert len(gates) == self._dp.n
-    self._dispatchers = self._dp(SparseDispatcher, self._ep.n, gates)
+        self._gates = gates
+        self._dp = data_parallelism
+        self._ep = expert_parallelism
+        assert len(gates) == self._dp.n
+        self._dispatchers = self._dp(SparseDispatcher, self._ep.n, gates)
 
-  def dispatch(self, inp):
-    """Create one input Tensor for each expert.
+    def dispatch(self, inp):
+        """Create one input Tensor for each expert.
 
     Args:
       inp: a list of length num_datashards `Tensor`s with shapes
@@ -820,15 +830,16 @@ class DistributedSparseDispatcher(object):
       a list of `num_experts` `Tensor`s with shapes
         `[num_examples[i], <extra_input_dims>]`.
     """
-    dispatched = self._dp(lambda a, b: a.dispatch(b), self._dispatchers, inp)
-    ret = self._ep(tf.concat, transpose_list_of_lists(dispatched), 0)
-    if ret[0].dtype == tf.float32:
-      # see comments on convert_gradient_to_tensor
-      ret = self._ep(convert_gradient_to_tensor, ret)
-    return ret
+        dispatched = self._dp(lambda a, b: a.dispatch(b), self._dispatchers,
+                              inp)
+        ret = self._ep(tf.concat, transpose_list_of_lists(dispatched), 0)
+        if ret[0].dtype == tf.float32:
+            # see comments on convert_gradient_to_tensor
+            ret = self._ep(convert_gradient_to_tensor, ret)
+        return ret
 
-  def combine(self, expert_out, multiply_by_gates=True):
-    """Sum together the expert output, multiplied by the corresponding gates.
+    def combine(self, expert_out, multiply_by_gates=True):
+        """Sum together the expert output, multiplied by the corresponding gates.
 
     Args:
       expert_out: a list of `num_experts` `Tensor`s, each with shape
@@ -839,48 +850,50 @@ class DistributedSparseDispatcher(object):
       a list of num_datashards `Tensor`s with shapes
         `[batch_size[d], <extra_output_dims>]`.
     """
-    expert_part_sizes = tf.unstack(
-        tf.stack([d.part_sizes for d in self._dispatchers]),
-        num=self._ep.n,
-        axis=1)
-    # list of lists of shape [num_experts][num_datashards]
-    expert_output_parts = self._ep(tf.split, expert_out, expert_part_sizes)
-    expert_output_parts_t = transpose_list_of_lists(expert_output_parts)
-    def my_combine(dispatcher, parts):
-      return dispatcher.combine(
-          convert_gradient_to_tensor(tf.concat(parts, 0)),
-          multiply_by_gates=multiply_by_gates)
-    return self._dp(my_combine, self._dispatchers, expert_output_parts_t)
+        expert_part_sizes = tf.unstack(
+            tf.stack([d.part_sizes for d in self._dispatchers]),
+            num=self._ep.n,
+            axis=1)
+        # list of lists of shape [num_experts][num_datashards]
+        expert_output_parts = self._ep(tf.split, expert_out, expert_part_sizes)
+        expert_output_parts_t = transpose_list_of_lists(expert_output_parts)
 
-  def expert_to_gates(self):
-    """Gate values corresponding to the examples in the per-expert `Tensor`s.
+        def my_combine(dispatcher, parts):
+            return dispatcher.combine(
+                convert_gradient_to_tensor(tf.concat(parts, 0)),
+                multiply_by_gates=multiply_by_gates)
+
+        return self._dp(my_combine, self._dispatchers, expert_output_parts_t)
+
+    def expert_to_gates(self):
+        """Gate values corresponding to the examples in the per-expert `Tensor`s.
 
     Returns:
       a list of `num_experts` one-dimensional `Tensor`s of type `tf.float32`.
     """
-    return self._ep(
-        tf.concat,
-        transpose_list_of_lists(
-            self._dp(lambda d: d.expert_to_gates(), self._dispatchers)), 0)
+        return self._ep(
+            tf.concat,
+            transpose_list_of_lists(
+                self._dp(lambda d: d.expert_to_gates(), self._dispatchers)), 0)
 
 
 def transpose_list_of_lists(lol):
-  """Transpose a list of equally-sized python lists.
+    """Transpose a list of equally-sized python lists.
 
   Args:
     lol: a list of lists
   Returns:
     a list of lists
   """
-  assert lol, "cannot pass the empty list"
-  return [list(x) for x in zip(*lol)]
+    assert lol, "cannot pass the empty list"
+    return [list(x) for x in zip(*lol)]
 
 
 def ffn_expert_fn(input_size,
                   hidden_sizes,
                   output_size,
                   hidden_activation=tf.nn.relu):
-  """Returns a function that creates a feed-forward network.
+    """Returns a function that creates a feed-forward network.
 
   Use this function to create the expert_fn argument to distributed_moe.
 
@@ -893,33 +906,36 @@ def ffn_expert_fn(input_size,
   Returns:
     a unary function
   """
-  def my_fn(x):
-    layer_sizes = [input_size] + hidden_sizes + [output_size]
-    for i in xrange(1 + len(hidden_sizes)):
-      w = tf.get_variable("w_%d" % i, layer_sizes[i:i+2], tf.float32)
-      x = tf.matmul(x, w)
-      if i < len(hidden_sizes):
-        x = hidden_activation(x)
-      if layer_sizes[i] != input_size:
-        x *= (layer_sizes[i] / float(input_size))**-0.5
-    return x
-  return my_fn
+
+    def my_fn(x):
+        layer_sizes = [input_size] + hidden_sizes + [output_size]
+        for i in xrange(1 + len(hidden_sizes)):
+            w = tf.get_variable("w_%d" % i, layer_sizes[i:i + 2], tf.float32)
+            x = tf.matmul(x, w)
+            if i < len(hidden_sizes):
+                x = hidden_activation(x)
+            if layer_sizes[i] != input_size:
+                x *= (layer_sizes[i] / float(input_size))**-0.5
+        return x
+
+    return my_fn
 
 
 def reshape_like(a, b):
-  """Reshapes a to match the shape of b in all but the last dimension."""
-  ret = tf.reshape(a, tf.concat([tf.shape(b)[:-1], tf.shape(a)[-1:]], 0))
-  if not context.in_eager_mode():
-    ret.set_shape(b.get_shape().as_list()[:-1] + a.get_shape().as_list()[-1:])
-  return ret
+    """Reshapes a to match the shape of b in all but the last dimension."""
+    ret = tf.reshape(a, tf.concat([tf.shape(b)[:-1], tf.shape(a)[-1:]], 0))
+    if not context.in_eager_mode():
+        ret.set_shape(b.get_shape().as_list()[:-1] +
+                      a.get_shape().as_list()[-1:])
+    return ret
 
 
 def flatten_all_but_last(a):
-  """Flatten all dimensions of a except the last."""
-  ret = tf.reshape(a, [-1, tf.shape(a)[-1]])
-  if not context.in_eager_mode():
-    ret.set_shape([None] + a.get_shape().as_list()[-1:])
-  return ret
+    """Flatten all dimensions of a except the last."""
+    ret = tf.reshape(a, [-1, tf.shape(a)[-1]])
+    if not context.in_eager_mode():
+        ret.set_shape([None] + a.get_shape().as_list()[-1:])
+    return ret
 
 
 def distributed_moe(data_parallelism,
@@ -932,7 +948,7 @@ def distributed_moe(data_parallelism,
                     k=2,
                     loss_coef=1e-2,
                     name=None):
-  """Call a distributed mixture of experts.
+    """Call a distributed mixture of experts.
 
   Args:
     data_parallelism: a expert_utils.Parallelism object.
@@ -957,38 +973,39 @@ def distributed_moe(data_parallelism,
       training loss of the model.  The backpropagation of this loss
       encourages all experts to be approximately equally used across a batch.
   """
-  dp = data_parallelism
-  # create a parallelism object for running the experts.
-  #   We use the default of reuse=False.  Otherwise, the experts would all
-  #   use the same variables.
-  ep = Parallelism(
-      [expert_devices[i % len(expert_devices)] for i in xrange(num_experts)],
-      reuse=None)
-  # Experts expect 2d input tensors, so flatten the batch dimension and all
-  # spatial dimensions together.
-  xs_flat = dp(tf.reshape, xs, [[-1, input_size]] * dp.n)
-  with tf.variable_scope(name, default_name="moe"):
-    # The gates indicate which batch elements go to which tensors.
-    # load is a measure of approximately how many examples go to each expert
-    gates, load = dp(noisy_top_k_gating,
-                     xs_flat,
-                     num_experts,
-                     train,
-                     k,
-                     initializer=tf.zeros_initializer(),
-                     noisy_gating=True,
-                     noise_epsilon=1e-2)
-    # This magic object helps us shuffle data between datashards and experts.
-    dispatcher = DistributedSparseDispatcher(dp, ep, gates)
-    expert_in = dispatcher.dispatch(xs_flat)
-    expert_out = ep(expert_fn, expert_in)
-    ys_flat = dispatcher.combine(expert_out)
-    ys = dp(reshape_like, ys_flat, xs)
-    # compute some load-balancing losses.
-    load = tf.add_n(load)
-    importance = tf.add_n(dp(tf.reduce_sum, gates, 0))
-    loss = loss_coef * (cv_squared(importance) + cv_squared(load))
-    return ys, loss
+    dp = data_parallelism
+    # create a parallelism object for running the experts.
+    #   We use the default of reuse=False.  Otherwise, the experts would all
+    #   use the same variables.
+    ep = Parallelism(
+        [expert_devices[i % len(expert_devices)] for i in xrange(num_experts)],
+        reuse=None)
+    # Experts expect 2d input tensors, so flatten the batch dimension and all
+    # spatial dimensions together.
+    xs_flat = dp(tf.reshape, xs, [[-1, input_size]] * dp.n)
+    with tf.variable_scope(name, default_name="moe"):
+        # The gates indicate which batch elements go to which tensors.
+        # load is a measure of approximately how many examples go to each expert
+        gates, load = dp(
+            noisy_top_k_gating,
+            xs_flat,
+            num_experts,
+            train,
+            k,
+            initializer=tf.zeros_initializer(),
+            noisy_gating=True,
+            noise_epsilon=1e-2)
+        # This magic object helps us shuffle data between datashards and experts.
+        dispatcher = DistributedSparseDispatcher(dp, ep, gates)
+        expert_in = dispatcher.dispatch(xs_flat)
+        expert_out = ep(expert_fn, expert_in)
+        ys_flat = dispatcher.combine(expert_out)
+        ys = dp(reshape_like, ys_flat, xs)
+        # compute some load-balancing losses.
+        load = tf.add_n(load)
+        importance = tf.add_n(dp(tf.reduce_sum, gates, 0))
+        loss = loss_coef * (cv_squared(importance) + cv_squared(load))
+        return ys, loss
 
 
 def local_moe(x,
@@ -1003,7 +1020,7 @@ def local_moe(x,
               noisy_gating=True,
               noise_eps=1e-2,
               name=None):
-  """Call a local mixture of experts.
+    """Call a local mixture of experts.
 
   Args:
     x: a tensors with shape [... , input_size]
@@ -1028,45 +1045,45 @@ def local_moe(x,
       encourages all experts to be approximately equally used across a batch.
   """
 
-  with tf.variable_scope(name, default_name="local_moe"):
-    x_flat = flatten_all_but_last(x)
+    with tf.variable_scope(name, default_name="local_moe"):
+        x_flat = flatten_all_but_last(x)
 
-    # The gates indicate which batch elements go to which tensors.
-    # load is a measure of approximately how many examples go to each expert
-    gates, load = noisy_top_k_gating(
-        x_flat,
-        num_experts,
-        train,
-        k,
-        initializer=tf.zeros_initializer(),
-        noisy_gating=noisy_gating,
-        noise_epsilon=noise_eps)
-    # This magic object helps us shuffle data between datashards and experts.
-    dispatcher = SparseDispatcher(num_experts, gates)
+        # The gates indicate which batch elements go to which tensors.
+        # load is a measure of approximately how many examples go to each expert
+        gates, load = noisy_top_k_gating(
+            x_flat,
+            num_experts,
+            train,
+            k,
+            initializer=tf.zeros_initializer(),
+            noisy_gating=noisy_gating,
+            noise_epsilon=noise_eps)
+        # This magic object helps us shuffle data between datashards and experts.
+        dispatcher = SparseDispatcher(num_experts, gates)
 
-    # Set up expert_fn arguments
-    expert_kwargs = {}
-    if pass_x:
-      expert_kwargs["x"] = dispatcher.dispatch(x_flat)
-    if pass_gates:
-      expert_kwargs["gates"] = dispatcher.expert_to_gates()
-    for k, v in six.iteritems(additional_dispatch_params or {}):
-      v = flatten_all_but_last(v)
-      expert_kwargs[k] = dispatcher.dispatch(v)
+        # Set up expert_fn arguments
+        expert_kwargs = {}
+        if pass_x:
+            expert_kwargs["x"] = dispatcher.dispatch(x_flat)
+        if pass_gates:
+            expert_kwargs["gates"] = dispatcher.expert_to_gates()
+        for k, v in six.iteritems(additional_dispatch_params or {}):
+            v = flatten_all_but_last(v)
+            expert_kwargs[k] = dispatcher.dispatch(v)
 
-    ep = Parallelism([DEFAULT_DEV_STRING] * num_experts, reuse=None)
-    expert_outputs = ep(expert_fn, **expert_kwargs)
+        ep = Parallelism([DEFAULT_DEV_STRING] * num_experts, reuse=None)
+        expert_outputs = ep(expert_fn, **expert_kwargs)
 
-    y_flat = dispatcher.combine(expert_outputs)
-    y = reshape_like(y_flat, x)
+        y_flat = dispatcher.combine(expert_outputs)
+        y = reshape_like(y_flat, x)
 
-    importance = tf.reduce_sum(gates, 0)
-    loss = loss_coef * (cv_squared(importance) + cv_squared(load))
-    return y, loss, gates, load
+        importance = tf.reduce_sum(gates, 0)
+        loss = loss_coef * (cv_squared(importance) + cv_squared(load))
+        return y, loss, gates, load
 
 
 class TruncatingDispatcher(object):
-  """Helper for implementing a mixture of experts.
+    """Helper for implementing a mixture of experts.
 
   A TruncatingDispatcher is useful when you need to deal with
   fixed-sized Tensors.  As opposed to a SparseDispatcher, which
@@ -1088,9 +1105,9 @@ class TruncatingDispatcher(object):
   "length" dimension is used.
   """
 
-  @add_name_scope("truncating_dispatcher")
-  def __init__(self, requests, expert_capacity):
-    """Create a TruncatingDispatcher.
+    @add_name_scope("truncating_dispatcher")
+    def __init__(self, requests, expert_capacity):
+        """Create a TruncatingDispatcher.
 
     Args:
       requests: a boolean `Tensor` of shape `[batch, length, num_experts]`.
@@ -1101,67 +1118,65 @@ class TruncatingDispatcher(object):
     Returns:
       a TruncatingDispatcher
     """
-    self._requests = tf.to_float(requests)
-    self._expert_capacity = expert_capacity
-    expert_capacity_f = tf.to_float(expert_capacity)
-    self._batch, self._length, self._num_experts = tf.unstack(
-        tf.shape(self._requests), num=3)
+        self._requests = tf.to_float(requests)
+        self._expert_capacity = expert_capacity
+        expert_capacity_f = tf.to_float(expert_capacity)
+        self._batch, self._length, self._num_experts = tf.unstack(
+            tf.shape(self._requests), num=3)
 
-    # [batch, length, num_experts]
-    position_in_expert = tf.cumsum(self._requests, axis=1, exclusive=True)
-    # [batch, length, num_experts]
-    self._gates = self._requests * tf.to_float(
-        tf.less(position_in_expert, expert_capacity_f))
-    batch_index = tf.reshape(
-        tf.to_float(tf.range(self._batch)), [self._batch, 1, 1])
-    length_index = tf.reshape(
-        tf.to_float(tf.range(self._length)), [1, self._length, 1])
-    expert_index = tf.reshape(
-        tf.to_float(tf.range(self._num_experts)), [1, 1, self._num_experts])
-    # position in a Tensor with shape [batch * num_experts * expert_capacity]
-    flat_position = (
-        position_in_expert +
-        batch_index * (tf.to_float(self._num_experts) * expert_capacity_f) +
-        expert_index * expert_capacity_f)
-    # Tensor of shape [batch * num_experts * expert_capacity].
-    # each element is an integer in [0, length)
-    self._indices = tf.unsorted_segment_sum(
-        data=tf.reshape((length_index + 1.0) * self._gates, [-1]),
-        segment_ids=tf.to_int32(tf.reshape(flat_position, [-1])),
-        num_segments=self._batch * self._num_experts * expert_capacity)
-    self._indices = tf.reshape(
-        self._indices,
-        [self._batch, self._num_experts, expert_capacity])
-    # Tensors of shape [batch, num_experts, expert_capacity].
-    # each element is 0.0 or 1.0
-    self._nonpadding = tf.minimum(self._indices, 1.0)
-    # each element is an integer in [0, length)
-    self._indices = tf.nn.relu(self._indices - 1.0)
-    # self._flat_indices is [batch, num_experts, expert_capacity], with values
-    # in [0, batch * length)
-    self._flat_indices = tf.to_int32(
-        self._indices +
-        (tf.reshape(tf.to_float(tf.range(self._batch)), [-1, 1, 1])
-         * tf.to_float(self._length)))
-    self._indices = tf.to_int32(self._indices)
+        # [batch, length, num_experts]
+        position_in_expert = tf.cumsum(self._requests, axis=1, exclusive=True)
+        # [batch, length, num_experts]
+        self._gates = self._requests * tf.to_float(
+            tf.less(position_in_expert, expert_capacity_f))
+        batch_index = tf.reshape(
+            tf.to_float(tf.range(self._batch)), [self._batch, 1, 1])
+        length_index = tf.reshape(
+            tf.to_float(tf.range(self._length)), [1, self._length, 1])
+        expert_index = tf.reshape(
+            tf.to_float(tf.range(self._num_experts)),
+            [1, 1, self._num_experts])
+        # position in a Tensor with shape [batch * num_experts * expert_capacity]
+        flat_position = (position_in_expert + batch_index *
+                         (tf.to_float(self._num_experts) * expert_capacity_f) +
+                         expert_index * expert_capacity_f)
+        # Tensor of shape [batch * num_experts * expert_capacity].
+        # each element is an integer in [0, length)
+        self._indices = tf.unsorted_segment_sum(
+            data=tf.reshape((length_index + 1.0) * self._gates, [-1]),
+            segment_ids=tf.to_int32(tf.reshape(flat_position, [-1])),
+            num_segments=self._batch * self._num_experts * expert_capacity)
+        self._indices = tf.reshape(
+            self._indices, [self._batch, self._num_experts, expert_capacity])
+        # Tensors of shape [batch, num_experts, expert_capacity].
+        # each element is 0.0 or 1.0
+        self._nonpadding = tf.minimum(self._indices, 1.0)
+        # each element is an integer in [0, length)
+        self._indices = tf.nn.relu(self._indices - 1.0)
+        # self._flat_indices is [batch, num_experts, expert_capacity], with values
+        # in [0, batch * length)
+        self._flat_indices = tf.to_int32(self._indices + (
+            tf.reshape(tf.to_float(tf.range(self._batch)), [-1, 1, 1]) *
+            tf.to_float(self._length)))
+        self._indices = tf.to_int32(self._indices)
 
-  @add_name_scope("truncating_dispatcher_dispatch")
-  def dispatch(self, inp):
-    """Send the inputs to the experts.
+    @add_name_scope("truncating_dispatcher_dispatch")
+    def dispatch(self, inp):
+        """Send the inputs to the experts.
 
     Args:
       inp: a `Tensor` of shape "[batch, length, depth]`
     Returns:
       a tensor with shape [batch, num_experts, expert_capacity, depth]
     """
-    inp = tf.reshape(inp, [self._batch * self._length, -1])
-    # [batch, num_experts, expert_capacity, depth]
-    ret = tf.gather(inp, self._flat_indices)
-    return ret
+        inp = tf.reshape(inp, [self._batch * self._length, -1])
+        # [batch, num_experts, expert_capacity, depth]
+        ret = tf.gather(inp, self._flat_indices)
+        return ret
 
-  @add_name_scope("truncating_dispatcher_combine")
-  def combine(self, x):
-    """Return the output from the experts.
+    @add_name_scope("truncating_dispatcher_combine")
+    def combine(self, x):
+        """Return the output from the experts.
 
     When one example goes to multiple experts, the outputs are summed.
 
@@ -1171,50 +1186,50 @@ class TruncatingDispatcher(object):
     Returns:
       a `Tensor` with shape `[batch, length, depth]
     """
-    depth = tf.shape(x)[-1]
-    x *= tf.expand_dims(self._nonpadding, -1)
-    ret = tf.unsorted_segment_sum(
-        x, self._flat_indices, num_segments=self._batch * self._length)
-    ret = tf.reshape(ret, [self._batch, self._length, depth])
-    return ret
+        depth = tf.shape(x)[-1]
+        x *= tf.expand_dims(self._nonpadding, -1)
+        ret = tf.unsorted_segment_sum(
+            x, self._flat_indices, num_segments=self._batch * self._length)
+        ret = tf.reshape(ret, [self._batch, self._length, depth])
+        return ret
 
-  def nonpadding(self):
-    """Which elements of a dispatched Tensor are not padding.
+    def nonpadding(self):
+        """Which elements of a dispatched Tensor are not padding.
 
     Returns:
       a Zero/One float tensor with shape [batch, num_experts, expert_capacity].
     """
-    return self._nonpadding
+        return self._nonpadding
 
-  def gates(self):
-    """A Tensor indicating which examples go to which experts.
+    def gates(self):
+        """A Tensor indicating which examples go to which experts.
 
     Returns:
       A float32 Tensor with shape [batch, length, num_experts], where each value
       is 0.0 or 1.0.
     """
-    return self._gates
+        return self._gates
 
-  def length_coordinate(self):
-    """Length coordinate of dispatched tensor.
+    def length_coordinate(self):
+        """Length coordinate of dispatched tensor.
 
     Returns:
       a tensor with shape [batch, num_experts, expert_capacity] containing
        integers in the range [0, length)
     """
-    return self._indices
+        return self._indices
 
 
 def should_generate_summaries():
-  """Is this an appropriate context to generate summaries.
+    """Is this an appropriate context to generate summaries.
 
   Returns:
     a boolean
   """
-  if "while/" in tf.contrib.framework.get_name_scope():
-    # Summaries don't work well within tf.while_loop()
-    return False
-  if tf.get_variable_scope().reuse:
-    # Avoid generating separate summaries for different data shards
-    return False
-  return True
+    if "while/" in tf.contrib.framework.get_name_scope():
+        # Summaries don't work well within tf.while_loop()
+        return False
+    if tf.get_variable_scope().reuse:
+        # Avoid generating separate summaries for different data shards
+        return False
+    return True

@@ -6,10 +6,19 @@ from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 
 
-def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_labels, real_subset_labels,
-                              num_subpopulations, num_markers, num_experts, marker_names,
-                              iteration, logger, zero_sub=False, pca=True):
-
+def plot_marker_distributions(out_dir,
+                              real_subset,
+                              fake_subset,
+                              fake_subset_labels,
+                              real_subset_labels,
+                              num_subpopulations,
+                              num_markers,
+                              num_experts,
+                              marker_names,
+                              iteration,
+                              logger,
+                              zero_sub=False,
+                              pca=True):
     """
     Plots the marker distribution per expert for each subpopulation and computes KS test and picks the best matching
     subpopulation for that expert
@@ -38,9 +47,13 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
     for expert in range(num_experts):
 
         if pca:
-            f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers + 1, figsize=(30, 30))
+            f, axes = plt.subplots(
+                nrows=num_subpopulations,
+                ncols=num_markers + 1,
+                figsize=(30, 30))
         else:
-            f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
+            f, axes = plt.subplots(
+                nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
 
         best_ks_sum = np.inf
 
@@ -75,13 +88,28 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
 
                 bins = np.linspace(overall_min, overall_max, num=30)
 
-                w = np.ones_like(real_data_by_sub[:, marker])/float(len(real_data_by_sub[:, marker]))
-                axes[sub, marker].hist(real_data_by_sub[:, marker], bins=bins, weights=w, label='R', normed=0, alpha=0.5)
+                w = np.ones_like(real_data_by_sub[:, marker]) / float(
+                    len(real_data_by_sub[:, marker]))
+                axes[sub, marker].hist(
+                    real_data_by_sub[:, marker],
+                    bins=bins,
+                    weights=w,
+                    label='R',
+                    normed=0,
+                    alpha=0.5)
 
-                w = np.ones_like(fake_data_by_expert[:, marker])/float(len(fake_data_by_expert[:, marker]))
-                axes[sub, marker].hist(fake_data_by_expert[:, marker], bins=bins, weights=w, label='F', normed=0, alpha=0.5)
+                w = np.ones_like(fake_data_by_expert[:, marker]) / float(
+                    len(fake_data_by_expert[:, marker]))
+                axes[sub, marker].hist(
+                    fake_data_by_expert[:, marker],
+                    bins=bins,
+                    weights=w,
+                    label='F',
+                    normed=0,
+                    alpha=0.5)
 
-                ks = ks_2samp(fake_data_by_expert[:, marker], real_data_by_sub[:, marker])[0]
+                ks = ks_2samp(fake_data_by_expert[:, marker],
+                              real_data_by_sub[:, marker])[0]
                 ks_markers.append(ks)
 
                 axes[sub, marker].set_xlim([overall_min, overall_max])
@@ -89,7 +117,8 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
                 axes[sub, marker].set_xticks(ticks.round(2))
 
                 axes[sub, marker].set_title('{}'.format(marker_names[marker]))
-                axes[sub, marker].set_ylabel('Subpopulation {}'.format(sub+1))
+                axes[sub, marker].set_ylabel(
+                    'Subpopulation {}'.format(sub + 1))
                 axes[sub, marker].legend()
 
             if np.sum(ks_markers) < best_ks_sum:
@@ -101,18 +130,25 @@ def plot_marker_distributions(out_dir, real_subset, fake_subset, fake_subset_lab
             axes[best_sub, marker].spines['top'].set_color('0.0')
             axes[best_sub, marker].spines['right'].set_color('0.0')
             axes[best_sub, marker].spines['left'].set_color('0.0')
-            [i.set_linewidth(2.5) for i in axes[best_sub, marker].spines.values()]
+            [
+                i.set_linewidth(2.5)
+                for i in axes[best_sub, marker].spines.values()
+            ]
 
-        f.suptitle('Marker Distribution Plots per subpopulation', x=0.5, y=1.02, fontsize=20)
+        f.suptitle(
+            'Marker Distribution Plots per subpopulation',
+            x=0.5,
+            y=1.02,
+            fontsize=20)
         f.tight_layout()
         plt.savefig(filename)
         plt.close()
 
-        logger.info('Marker distribution plot for expert {} added.'.format(expert+1))
+        logger.info(
+            'Marker distribution plot for expert {} added.'.format(expert + 1))
 
 
 def plot_loss(out_dir, disc_loss, gen_loss):
-
     """
     Saves loss plot to output directory
     :param out_dir: str, output directory
