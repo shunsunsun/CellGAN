@@ -192,9 +192,11 @@ def main():
 
                 training_data.append(processed_data)
                 cellgan_logger.info('File {} loaded and processed'.format(file))
+                cellgan_logger.info('File {} contains {} cells \n'.format(file, num_cells_in_file))
 
             else:
                 continue
+
         except AttributeError:
             pass
 
@@ -221,7 +223,7 @@ def main():
     cellgan_logger.info("Number of cells to be pooled sampled.\n")
 
     num_subpopulations = len(np.unique(training_labels))
-
+    # TODO: Add condition for lesser experts
     if not args.num_experts:
         num_experts = num_subpopulations
     else:
