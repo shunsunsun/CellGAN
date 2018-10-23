@@ -107,18 +107,19 @@ class CellGanGen(object):
                 filters=self.hparams['num_filters'],
                 kernel_initializer=self.init(),
                 kernel_size=noise_size,
+                activation=tf.nn.relu,
                 name="g_conv1",
             )
 
             # Batch Normalization
             # Expected Shape (batch_size *num_cells, 1, num_filters)
-            g_conv1_bnorm = tf.layers.batch_normalization(inputs=g_conv1, axis=-1)
-            g_conv1_out = tf.nn.relu(g_conv1_bnorm)
+            g_conv1_bnorm = tf.layers.batch_normalization(
+                inputs=g_conv1, axis=-1)
 
             # Reshaped Convolutional output
             # Expected Shape: (batch_size*num_cells, num_filters)
             reshaped_conv1_output = tf.reshape(
-                g_conv1_out,
+                g_conv1_bnorm,
                 shape=[batch_size * num_cells, self.hparams['num_filters']])
 
             # Get the moe_input_size
@@ -158,7 +159,8 @@ class CellGanGen(object):
                 print("---------")
                 print("Convolutional layer input shape: ", conv1_input.shape)
                 print("Convolutional layer output shape: ", g_conv1.shape)
-                print("Batch Normalization output shape: ", g_conv1_out.shape)
+                print("Batch Normalization output shape: ",
+                      g_conv1_bnorm.shape)
                 print("Convolutional layer output reshaped: ",
                       reshaped_conv1_output.shape)
                 print("Moe output shape: ", moe_output.shape)
