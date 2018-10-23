@@ -471,7 +471,6 @@ def main():
             subset_size = np.random.randint(low=20, high=50)
             outlier_scores = compute_outlier_weights(
                 inputs=training_data, method='q_sp', subset_size=subset_size)
-            cellgan_logger.info('Subset Size: {}'.format(subset_size))
 
             # Discriminator Training
             model.set_train(True)
@@ -532,6 +531,7 @@ def main():
                 # Iteration number and losses
                 cellgan_logger.info(
                     "We are at iteration: {}".format(iteration + 1))
+                cellgan_loger.info("Subset size used: {}".format(subset_size))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info(
