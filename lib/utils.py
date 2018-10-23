@@ -193,6 +193,7 @@ def generate_subset(inputs,
 
 def compute_outlier_weights(inputs,
                             method='q_sp',
+                            metric='l2',
                             subset_size=DEFAULT_SUBSET_SIZE):
     """
     Returns the outlier weights computed for the inputs using the method specified
@@ -207,23 +208,58 @@ def compute_outlier_weights(inputs,
             'Other outlier methods are not implemented currently')
 
     else:
-
-        if subset_size < inputs.shape[0]:
-            subset_indices = np.random.choice(
-                inputs.shape[0], size=subset_size, replace=False)
-        else:
-            subset_indices = np.random.choice(
-                inputs.shape[0], size=subset_size, replace=True)
-
-        sampled_subset = inputs[subset_indices, :]
-        dists = np.zeros(inputs.shape[0])
-
-        for index in range(len(dists)):
-            dists[index] = np.min(np.square(inputs[index] - sampled_subset))
-
-        outlier_weights = dists / dists.sum()
+        outlier_weights = q_sp(inputs, metric=metric, subset_size=subset_size)
 
         return outlier_weights
+
+
+def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
+
+    """q_sp method for computing outlier weights"""
+
+    if subset_size < inputs.shape[0]:
+        subset_indices = np.random.choice(
+            inputs.shape[0], size=subset_size, replace=False)
+    else:
+        subset_indices = np.random.choice(
+            inputs.shape[0], size=subset_size, replace=True)
+
+    sampled_subset = inputs[subset_indices, :]
+    dists = np.zeros(inputs.shape[0])
+
+    for index in range(len(dists)):
+        sample = inputs[index]
+        dists[index] = compute_closest(sample, sampled_subset, metric=metric)
+
+    outlier_weights = dists / dists.sum()
+
+    return outlier_weights
+
+
+def compute_closest(x, y, metric='l2'):
+
+    if metric == 'l2':
+
+        dists = np.square(x - y)
+        dists = np.sum(dists, axis=1)
+
+        assert len(dists) == y.shape[0]
+
+        smallest_dist = np.min(dists)
+
+    elif metric == 'l1':
+
+        dists = np.abs(x - y)
+        dists = np.sum(dists, axis=1)
+
+        assert len(dists) == y.shape[0]
+
+        smallest_dist = np.min(dists)
+
+    else:
+        smallest_dist = 0
+
+    return smallest_dist
 
 
 def write_hparams_to_file(out_dir, hparams):

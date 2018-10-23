@@ -471,6 +471,7 @@ def main():
             subset_size = np.random.randint(low=20, high=50)
             outlier_scores = compute_outlier_weights(
                 inputs=training_data, method='q_sp', subset_size=subset_size)
+            cellgan_logger.info('Subset Size: {}'.format(subset_size))
 
             # Discriminator Training
             model.set_train(True)
