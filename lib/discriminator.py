@@ -1,4 +1,9 @@
 import tensorflow as tf
+import os
+import sys
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
+sys.path.insert(0, ROOT_DIR)
+
 from lib.utils import initializers
 
 DEFAULT_HIDDEN_UNITS = 256
@@ -83,15 +88,18 @@ class CellCnn(object):
                 kernel_size=num_markers,
                 kernel_initializer=self.init(),
                 name='d_conv1',
-                activation=tf.nn.relu,
             )
+
+            # Batch Normalization and activation
+            d_conv1_bnorm = tf.layers.batch_normalization(inputs=d_conv1, axis=-1)
+            d_conv1_out = tf.nn.relu(d_conv1_bnorm)
 
             num_filters = int(d_conv1.shape[-1])
 
             # Reshaped output for downstream layers
             # Expected Shape: (batch_size, num_filters, num_cells_per_input]
             reshaped_d_conv1 = tf.reshape(
-                d_conv1, shape=[batch_size, num_filters, num_cells_per_input])
+                d_conv1_out, shape=[batch_size, num_filters, num_cells_per_input])
 
             # Setting an appropriate value of number of cells to be pooled
             if num_cells_per_input == 1:
@@ -138,6 +146,7 @@ class CellCnn(object):
                 print("-------------")
                 print("Convolutional layer input shape: ", conv1_input.shape)
                 print("Convolutional layer output shape: ", d_conv1.shape)
+                print('Shape after batch_normalization is: ', d_conv1_bnorm.shape)
                 print("Convolutional layer output reshaped: ",
                       reshaped_d_conv1.shape)
                 print("Pooling layer output shape: ", d_pooled1.shape)
