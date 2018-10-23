@@ -108,7 +108,8 @@ class CellGanGen(object):
             # Reshaped Convolutional output
             # Expected Shape: (batch_size*num_cells, num_filters)
             reshaped_conv1_output = tf.reshape(
-                g_conv1, shape=[batch_size * num_cells, self.hparams['num_filters']])
+                g_conv1,
+                shape=[batch_size * num_cells, self.hparams['num_filters']])
 
             # Get the moe_input_size
             self.moe_input_size = int(reshaped_conv1_output.shape[-1])
