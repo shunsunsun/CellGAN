@@ -9,6 +9,9 @@ import datetime
 
 import numpy as np
 import tensorflow as tf
+from sklearn.decomposition import PCA
+import umap
+# from MulticoreTSNE import MulticoreTSNE as TSNE
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.insert(0, ROOT_DIR)
@@ -19,7 +22,7 @@ from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.utils import build_logger
 from lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from lib.model import CellGan
-from lib.plotting import plot_marker_distributions, plot_loss
+from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_umap, plot_tsne
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -462,6 +465,14 @@ def main():
     discriminator_loss = list()
     generator_loss = list()
 
+    # Fit PCA object already
+    pca = PCA(n_components=2)
+    pca = pca.fit(training_data)
+
+    # Fit UMAP object
+    um = umap.UMAP()
+    um = um.fit(training_data)
+
     with tf.Session() as sess:
 
         sess.run(tf.global_variables_initializer())
@@ -531,7 +542,7 @@ def main():
                 # Iteration number and losses
                 cellgan_logger.info(
                     "We are at iteration: {}".format(iteration + 1))
-                cellgan_loger.info("Subset size used: {}".format(subset_size))
+                cellgan_logger.info("Subset size used: {}".format(subset_size))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info(
@@ -585,10 +596,10 @@ def main():
                                                          num_subpopulations=num_subpopulations)
 
                 cellgan_logger.info("The actual subpopulation weights are: {}".
-                                    format(weights_subpopulations))
+                                    format(np.round(weights_subpopulations, 4)))
                 cellgan_logger.info(
                     "The learnt subpopulation weights are: {} \n".format(
-                        learnt_subpopulation_weights))
+                        np.round(learnt_subpopulation_weights, 4)))
 
                 # Save loss plot
                 cellgan_logger.info("Saving loss plot")
@@ -612,10 +623,42 @@ def main():
                     marker_names=markers_of_interest,
                     iteration=iteration,
                     logger=cellgan_logger,
-                    zero_sub=True,
-                    pca=False)
+                    zero_sub=True)
                 cellgan_logger.info("Marker distribution plots added. \n")
+                
+                # PCA plot
+                cellgan_logger.info("Adding PCA plots...")
 
+                plot_pca(
+                    out_dir=output_dir, pca_obj=pca, 
+                    real_subset=real_samples,
+                    fake_subset=fake_samples,
+                    real_subset_labels=real_sample_subs,
+                    fake_subset_labels=fake_sample_experts,
+                    num_experts=num_experts,
+                    iteration=iteration,
+                    logger=cellgan_logger)
+
+                cellgan_logger.info("PCA plots added. \n")
+                
+                # UMAP plot
+                cellgan_logger.info("Adding UMAP plots...")
+
+                plot_umap(
+                    out_dir=output_dir, umap_obj=um,
+                    real_subset=real_samples, 
+                    fake_subset=fake_samples, 
+                    real_subset_labels=real_sample_subs,
+                    fake_subset_labels=fake_sample_experts, 
+                    num_experts=num_experts,
+                    iteration=iteration,
+                    logger=cellgan_logger)
+
+                cellgan_logger.info("UMAP plots added. \n")
+
+                #TODO: Figure out wa way to add t_sne
+
+                # Save the model
                 cellgan_logger.info("Saving the model...")
                 saver = tf.train.Saver()
                 save_path = saver.save(sess, model_path)
