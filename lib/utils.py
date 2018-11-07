@@ -196,11 +196,11 @@ def compute_outlier_weights(inputs,
                             metric='l2',
                             subset_size=DEFAULT_SUBSET_SIZE):
     """
-    Returns the outlier weights computed for the inputs using the method specified
+    Computes the outlier weights using the given metric
     :param inputs: np.ndarray, dataset comprised of cells to be used for training
     :param method: what method to use for outlier computation (default q_sp)
     :param subset_size: Size of the randomly sampled subset to compute outliers
-    :return:
+    :return: outlier_weights
     """
 
     if method != 'q_sp':
@@ -215,7 +215,12 @@ def compute_outlier_weights(inputs,
 
 def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
 
-    """q_sp method for computing outlier weights"""
+    """q_sp method for computing outlier weights
+    :param inputs: dataset comprised of cells to be used for training
+    :param subset_size: Size of the randomly sampled subset to compute outliers
+    :param metric: Which distance metric to use (default l2)
+    :return outlier_weights 
+    """
 
     if subset_size < inputs.shape[0]:
         subset_indices = np.random.choice(
@@ -237,6 +242,13 @@ def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
 
 
 def compute_closest(x, y, metric='l2'):
+
+    """Finds smallest distance to y for x (x is a single data point) 
+    :param x: data point for which we want to compute the closest distance to
+    :param y: subset in which we wish to find smallest distance to (Matrix)
+    :metric: Which distance metric to use (default l2)
+    :return: smallest_dist
+    """
 
     if metric == 'l2':
 
@@ -326,6 +338,7 @@ def compute_frequency(labels, weighted=False):
 
         return label_counts
 
+#TODO: Add an implementation for wasserstein distance as well
 
 def compute_ks(real_data, real_labels, fake_data, expert_labels,
                num_subpopulations, num_experts):
