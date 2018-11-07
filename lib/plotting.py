@@ -4,6 +4,97 @@ import matplotlib
 matplotlib.use('Agg')
 from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+import umap
+from MulticoreTSNE import MulticoreTSNE as TSNE
+
+def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
+        fake_subset, fake_subset_labels, num_experts, iteration, logger):
+
+    """ Generates plots for each expert based on given method 
+    :param out_dir: results directory
+    :param method: What type of plot (one of {pca, umap, tsne})
+    :param transformer: An object with transform method accompanying the method
+    :param real_subset: The sampled subset of real data
+    :param real_subset_labels: Subpopulations associated with each cell in real subset
+    :param fake_subset: Fake data from the generator 
+    :param fake_subset_labels: Which expert generates which cell in fake data
+    :param num_experts: Number of experts used
+    :param iteration: which iteration of training are we at
+    :param logger: logger used
+
+    """
+    
+    dirname = os.path.join(out_dir, str((iteration // 100) + 1))
+    save_dir = os.path.join(dirname, method + '_plots')
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+        
+    transformed_real = transformer.transform(real_subset)
+    transformed_fake = transformer.transform(fake_subset)
+
+    for expert in range(num_experts):
+
+        savefile = os.path.join(save_dir, 'Expert_' + str(expert+1) + '.png')
+        indices = np.flatnonzero(fake_subset_labels == expert)
+
+        f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
+
+        # Add the first plot
+        axes[0].scatter(transformed_real[:, 0], transformed_real[:, 1], c='tab:gray', label='Real data')
+        axes[0].scatter(transformed_fake[indices, 0], transformed_fake[indices, 1], c='tab:orange', 
+                label='Fake data by expert {}'.format(expert+1))
+        axes[0].set_xlabel('PC1')
+        axes[0].set_ylabel('PC2')
+        axes[0].legend()
+
+        # Add the second plot
+        axes[1].scatter(transformed_real[:, 0], transformed_real[:, 1], c=real_subset_labels, label='Real Data')
+        axes[1].scatter(transformed_fake[indices, 0], transformed_fake[indices, 1], c='tab:orange', 
+                label='Fake data by expert {}'.format(expert+1))
+        axes[1].set_xlabel('PC1')
+        axes[1].set_ylabel('PC2')
+        axes[1].legend()
+
+        f.tight_layout()
+        plt.savefig(savefile)
+        plt.close()
+
+        logger.info(method.upper() + ' plots added for expert {}'.format(str(expert+1)))
+    logger.info("\n")
+
+
+def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset, 
+        fake_subset_labels, num_experts, iteration, logger):
+
+    """ Generates the PCA plot for each expert """
+
+    plotter(out_dir=out_dir, method='pca', transformer=pca_obj, real_subset=real_subset, 
+            real_subset_labels=real_subset_labels, fake_subset=fake_subset, 
+            iteration=iteration, fake_subset_labels=fake_subset_labels, 
+            num_experts=num_experts, logger=logger)
+
+
+def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset, 
+        fake_subset_labels, num_experts, iteration, logger):
+
+    """ Generates the UMAP plot """
+    
+    plotter(out_dir=out_dir, method='umap', transformer=umap_obj, real_subset=real_subset, 
+            real_subset_labels=real_subset_labels, fake_subset=fake_subset, 
+            iteration=iteration, fake_subset_labels=fake_subset_labels, 
+            num_experts=num_experts, logger=logger)
+
+
+def plot_tsne(out_dir, tsne_obj, real_subset, real_subset_labels, fake_subset, 
+        fake_subset_labels, num_experts, iteration, logger):
+
+    """ Generates the tsne plot """
+
+    plotter(out_dir=out_dir, method='tsne', transformer=tsne_obj, real_subset=real_subset, 
+            real_subset_labels=real_subset_labels, fake_subset=fake_subset, 
+            iteration=iteration, fake_subset_labels=fake_subset_labels, 
+            num_experts=num_experts, logger=logger)
 
 
 def plot_marker_distributions(out_dir,
@@ -17,8 +108,7 @@ def plot_marker_distributions(out_dir,
                               marker_names,
                               iteration,
                               logger,
-                              zero_sub=False,
-                              pca=True):
+                              zero_sub=False):
     """
     Plots the marker distribution per expert for each subpopulation and computes KS test and picks the best matching
     subpopulation for that expert
@@ -38,28 +128,21 @@ def plot_marker_distributions(out_dir,
     :return:
     """
 
-    # TODO: Add the part for pca based plotting
-
     dirname = os.path.join(out_dir, str((iteration // 100) + 1))
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
+    save_dir = os.path.join(dirname, 'distributions')
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
     for expert in range(num_experts):
 
-        if pca:
-            f, axes = plt.subplots(
-                nrows=num_subpopulations,
-                ncols=num_markers + 1,
-                figsize=(30, 30))
-        else:
-            f, axes = plt.subplots(
-                nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
+        f, axes = plt.subplots(nrows=num_subpopulations, 
+                ncols=num_markers, figsize=(30, 30))
 
         best_ks_sum = np.inf
 
-        filename = os.path.join(dirname, 'Expert_' + str(expert + 1) + '.png')
-
-        indices = np.where(fake_subset_labels == expert)[0]
+        filename = os.path.join(save_dir, 'Expert_' + str(expert + 1) + '.png')
+        indices = np.flatnonzero(fake_subset_labels == expert)
 
         # Fake data generated by expert in the GAN
         fake_data_by_expert = fake_subset[indices, :]
@@ -67,9 +150,9 @@ def plot_marker_distributions(out_dir,
         for sub in range(num_subpopulations):
 
             if zero_sub:
-                indices = np.where(real_subset_labels == sub)[0]
+                indices = np.flatnonzero(real_subset_labels == sub)
             else:
-                indices = np.where(real_subset_labels == (sub + 1))[0]
+                indices = np.flatnonzero(real_subset_labels == (sub + 1))
 
             real_data_by_sub = real_subset[indices, :]
 
@@ -88,25 +171,13 @@ def plot_marker_distributions(out_dir,
 
                 bins = np.linspace(overall_min, overall_max, num=30)
 
-                w = np.ones_like(real_data_by_sub[:, marker]) / float(
-                    len(real_data_by_sub[:, marker]))
-                axes[sub, marker].hist(
-                    real_data_by_sub[:, marker],
-                    bins=bins,
-                    weights=w,
-                    label='R',
-                    normed=0,
-                    alpha=0.5)
+                w = np.ones_like(real_data_by_sub[:, marker]) / float(len(real_data_by_sub[:, marker]))
+                axes[sub, marker].hist(real_data_by_sub[:, marker], bins=bins, 
+                        weights=w, label='R',normed=0, alpha=0.5)
 
-                w = np.ones_like(fake_data_by_expert[:, marker]) / float(
-                    len(fake_data_by_expert[:, marker]))
-                axes[sub, marker].hist(
-                    fake_data_by_expert[:, marker],
-                    bins=bins,
-                    weights=w,
-                    label='F',
-                    normed=0,
-                    alpha=0.5)
+                w = np.ones_like(fake_data_by_expert[:, marker]) / float(len(fake_data_by_expert[:, marker]))
+                axes[sub, marker].hist(fake_data_by_expert[:, marker], bins=bins,
+                        weights=w, label='F',normed=0, alpha=0.5)
 
                 ks = ks_2samp(fake_data_by_expert[:, marker],
                               real_data_by_sub[:, marker])[0]
@@ -130,22 +201,14 @@ def plot_marker_distributions(out_dir,
             axes[best_sub, marker].spines['top'].set_color('0.0')
             axes[best_sub, marker].spines['right'].set_color('0.0')
             axes[best_sub, marker].spines['left'].set_color('0.0')
-            [
-                i.set_linewidth(2.5)
-                for i in axes[best_sub, marker].spines.values()
-            ]
+            [i.set_linewidth(2.5) for i in axes[best_sub, marker].spines.values()]
 
-        f.suptitle(
-            'Marker Distribution Plots per subpopulation',
-            x=0.5,
-            y=1.02,
-            fontsize=20)
+        f.suptitle('Marker Distribution Plots per subpopulation', x=0.5, y=1.02, fontsize=20)
         f.tight_layout()
         plt.savefig(filename)
         plt.close()
 
-        logger.info(
-            'Marker distribution plot for expert {} added.'.format(expert + 1))
+        logger.info('Marker distribution plot for expert {} added.'.format(expert + 1))
 
 
 def plot_loss(out_dir, disc_loss, gen_loss):
