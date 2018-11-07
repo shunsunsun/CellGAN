@@ -596,10 +596,9 @@ def main():
                                                          num_subpopulations=num_subpopulations)
 
                 cellgan_logger.info("The actual subpopulation weights are: {}".
-                                    format(np.round(weights_subpopulations, 4)))
+                                    format(weights_subpopulations))
                 cellgan_logger.info(
-                    "The learnt subpopulation weights are: {} \n".format(
-                        np.round(learnt_subpopulation_weights, 4)))
+                    "The learnt subpopulation weights are: {} \n".format(learnt_subpopulation_weights))
 
                 # Save loss plot
                 cellgan_logger.info("Saving loss plot")
