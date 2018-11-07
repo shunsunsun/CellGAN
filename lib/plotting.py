@@ -4,12 +4,10 @@ import matplotlib
 matplotlib.use('Agg')
 from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-import umap
-from MulticoreTSNE import MulticoreTSNE as TSNE
+
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
-        fake_subset, fake_subset_labels, num_experts, iteration, logger):
+            fake_subset, fake_subset_labels, num_experts, iteration, logger):
 
     """ Generates plots for each expert based on given method 
     :param out_dir: results directory
@@ -43,15 +41,15 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
         # Add the first plot
         axes[0].scatter(transformed_real[:, 0], transformed_real[:, 1], c='tab:gray', label='Real data')
         axes[0].scatter(transformed_fake[indices, 0], transformed_fake[indices, 1], c='tab:orange', 
-                label='Fake data by expert {}'.format(expert+1))
+                        label='Fake data by expert {}'.format(expert+1))
         axes[0].set_xlabel('PC1')
         axes[0].set_ylabel('PC2')
         axes[0].legend()
 
         # Add the second plot
         axes[1].scatter(transformed_real[:, 0], transformed_real[:, 1], c=real_subset_labels, label='Real Data')
-        axes[1].scatter(transformed_fake[indices, 0], transformed_fake[indices, 1], c='tab:orange', 
-                label='Fake data by expert {}'.format(expert+1))
+        axes[1].scatter(transformed_fake[indices, 0], transformed_fake[indices, 1], c='tab:orange',
+                        label='Fake data by expert {}'.format(expert+1))
         axes[1].set_xlabel('PC1')
         axes[1].set_ylabel('PC2')
         axes[1].legend()
@@ -64,8 +62,8 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     logger.info("\n")
 
 
-def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset, 
-        fake_subset_labels, num_experts, iteration, logger):
+def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset,
+             fake_subset_labels, num_experts, iteration, logger):
 
     """ Generates the PCA plot for each expert """
 
@@ -75,8 +73,8 @@ def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset,
             num_experts=num_experts, logger=logger)
 
 
-def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset, 
-        fake_subset_labels, num_experts, iteration, logger):
+def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset,
+              fake_subset_labels, num_experts, iteration, logger):
 
     """ Generates the UMAP plot """
     
@@ -86,8 +84,8 @@ def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset,
             num_experts=num_experts, logger=logger)
 
 
-def plot_tsne(out_dir, tsne_obj, real_subset, real_subset_labels, fake_subset, 
-        fake_subset_labels, num_experts, iteration, logger):
+def plot_tsne(out_dir, tsne_obj, real_subset, real_subset_labels, fake_subset,
+              fake_subset_labels, num_experts, iteration, logger):
 
     """ Generates the tsne plot """
 
