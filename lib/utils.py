@@ -322,17 +322,19 @@ def compute_frequency(labels, weighted=False):
 
     labels = labels.reshape(-1)
 
-    label_counts = Counter(labels)
+    counts = Counter(labels)
 
     if not weighted:
-        label_counts = dict(sorted(label_counts.items(), key=lambda x: x[0]))
+        counts = dict(sorted(counts.items(), key=lambda x: x[0]))
+        label_counts = {k+1:v for k, v in counts.items()}
         return label_counts
 
     else:
-        label_sum = np.sum(list(label_counts.values()))
-        for key in label_counts:
-            label_counts[key] = label_counts[key] / label_sum
-            label_counts[key] = label_counts[key].round(4)
+        label_sum = np.sum(list(counts.values()))
+        label_counts = dict()
+        for key in counts:
+            label_counts[key+1] = counts[key] / label_sum
+            label_counts[key+1] = label_counts[key+1].round(4)
 
         label_counts = dict(sorted(label_counts.items(), key=lambda x: x[0]))
 
