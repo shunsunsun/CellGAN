@@ -72,8 +72,8 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
 
             axes[0].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:gray',
                             label='Subpopulation {}'.format(subpopulation+1))
-            axes[0].set_xlim(left=xmin, right=xmax)
-            axes[0].set_ylim(left=ymin, right=ymax)
+            axes[0].set_xlim([xmin, xmax])
+            axes[0].set_ylim([ymin, ymax])
             axes[0].set_xlabel('PC1')
             axes[0].set_ylabel('PC2')
             axes[0].legend()
