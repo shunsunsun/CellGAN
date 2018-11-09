@@ -434,7 +434,7 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
 
     expert_weights = compute_frequency(labels=expert_labels, weighted=True)
     learnt_subpopulation_weights = {
-        subpopulation: 0.0
+        subpopulation+1: 0.0
         for subpopulation in range(num_subpopulations)
     }
 
