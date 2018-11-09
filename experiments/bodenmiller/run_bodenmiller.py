@@ -532,7 +532,7 @@ def main():
             discriminator_loss.append(d_loss)
             generator_loss.append(g_loss)
 
-            if iteration % 100 == 0:
+            if iteration % 500 == 0:
 
                 model.set_train(False)
 
@@ -610,6 +610,7 @@ def main():
 
                 # Plot marker distributions
                 cellgan_logger.info("Adding marker distribution plots...")
+                
                 plot_marker_distributions(
                     out_dir=output_dir,
                     real_subset=real_samples,
@@ -623,6 +624,7 @@ def main():
                     iteration=iteration,
                     logger=cellgan_logger,
                     zero_sub=True)
+                
                 cellgan_logger.info("Marker distribution plots added. \n")
                 
                 # PCA plot
@@ -635,8 +637,10 @@ def main():
                     real_subset_labels=real_sample_subs,
                     fake_subset_labels=fake_sample_experts,
                     num_experts=num_experts,
+                    num_subpopulations=num_subpopulations,
                     iteration=iteration,
-                    logger=cellgan_logger)
+                    logger=cellgan_logger,
+                    zero_sub=True)
 
                 cellgan_logger.info("PCA plots added. \n")
                 
@@ -650,8 +654,10 @@ def main():
                     real_subset_labels=real_sample_subs,
                     fake_subset_labels=fake_sample_experts, 
                     num_experts=num_experts,
+                    num_subpopulations=num_subpopulations,
                     iteration=iteration,
-                    logger=cellgan_logger)
+                    logger=cellgan_logger, 
+                    zero_sub=True)
 
                 cellgan_logger.info("UMAP plots added. \n")
 
