@@ -57,14 +57,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
         
             f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
 
-            # First plot (Only the real subpopulation)
-            axes[0].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:gray', 
-                            label='Subpopulation {}'.format(subpopulation+1))
-            axes[0].set_xlabel('PC1')
-            axes[0].set_ylabel('PC2')
-            axes[0].legend()
-
-            # Add the second plot (Real Subpopulation, Fake Data)
+            # Second plot (Real Subpopulation, Fake Data)
             axes[1].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:blue',
                             label='Subpopulation {}'.format(subpopulation+1))
             axes[1].scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='tab:orange',
@@ -72,7 +65,19 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             axes[1].set_xlabel('PC1')
             axes[1].set_ylabel('PC2')
             axes[1].legend()
-            
+
+            # First plot
+            xmin, xmax = axes[1].get_xlim()
+            ymin, ymax = axes[1].get_ylim()
+
+            axes[0].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:gray',
+                            label='Subpopulation {}'.format(subpopulation+1))
+            axes[0].set_xlim(left=xmin, right=xmax)
+            axes[0].set_ylim(left=ymin, right=ymax)
+            axes[0].set_xlabel('PC1')
+            axes[0].set_ylabel('PC2')
+            axes[0].legend()
+
             savefile = os.path.join(expert_dir, 'Subpopulation_{}.png'.format(subpopulation+1))
             f.tight_layout()
             plt.savefig(savefile)

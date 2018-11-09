@@ -470,7 +470,7 @@ def main():
     pca = pca.fit(training_data)
 
     # Fit UMAP object
-    um = umap.UMAP()
+    um = umap.UMAP(n_neighbors=10)
     um = um.fit(training_data)
 
     with tf.Session() as sess:
