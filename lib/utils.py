@@ -447,7 +447,7 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
             for expert in which_experts:
                 try:
                     learnt_subpopulation_weights[
-                        subpopulation] += expert_weights[expert]
+                        subpopulation+1] += expert_weights[expert]
                 except:
                     KeyError
 

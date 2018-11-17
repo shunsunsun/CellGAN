@@ -53,8 +53,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
                 indices = np.flatnonzero(real_subset_labels == subpopulation + 1)
             
             real_data_by_sub = transformed_real[indices]
-            
-        
+
             f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
 
             # Second plot (Real Subpopulation, Fake Data)
