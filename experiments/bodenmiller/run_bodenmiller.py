@@ -24,14 +24,14 @@ from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.utils import build_logger
 from lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from lib.model import CellGan
-from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_umap
+from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_umap, plot_heatmap
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 DEFAULT_INPUT_DIR = os.path.join(DATA_DIR, 'AKTi')
 DEFAULT_FCS_FILE = os.path.join(DEFAULT_INPUT_DIR, 'AKTi_fcs.csv')
 DEFAULT_MARKERS_FILE = os.path.join(DEFAULT_INPUT_DIR, 'markers.csv')
-DEFAULT_OUT_DIR = os.path.join(ROOT_DIR, 'results/bodenmiller', 'AKTi')
+DEFAULT_OUT_DIR = os.path.join(ROOT_DIR, 'results/bodenmiller/cellgan', 'AKTi')
 
 
 def main():
@@ -70,7 +70,7 @@ def main():
     parser.add_argument('-ns', '--noise_size', dest='noise_size', type=int, default=100,
                         help='Noise dimension for generator')
 
-    parser.add_argument('--moe_sizes', dest='moe_sizes', type=list, default=[100, 100],
+    parser.add_argument('--moe_sizes', dest='moe_sizes', nargs='+', type=int, default=[100, 100],
                         help='Sizes of the Mixture of Experts hidden layers')
 
     parser.add_argument('-e', '--experts', dest='num_experts', type=int,
@@ -134,8 +134,11 @@ def main():
     parser.add_argument('--beta_2', dest='beta_2', type=float, default=0.999,
                         help='beta_2 value for adam optimizer')
 
-    parser.add_argument('--type_gan',dest='type_gan', choices=['normal', 'wgan', 'wgan-gp'],
+    parser.add_argument('--type_gan', dest='type_gan', choices=['normal', 'wgan', 'wgan-gp'],
                         default='wgan', help='Type of GAN used for training')
+
+    parser.add_argument('--clip_val', dest='clip_val', default=0.01,
+                        help='clip discriminator values when using wgan')
 
     parser.add_argument('--init_method', dest='init_method',
                         choices=['xavier', 'zeros', 'normal'], default='xavier',
@@ -279,9 +282,11 @@ def main():
         dropout_prob=args.dropout_prob,
         noisy_gating=args.noisy_gating,
         noise_eps=args.noise_eps,
+        lr=args.learning_rate,
         beta_1=args.beta_1,
         beta_2=args.beta_2,
         reg_lambda=args.reg_lambda,
+        clip_val=args.clip_val,
         train=True,
         init_method=args.init_method,
         type_gan=args.type_gan,
@@ -293,24 +298,34 @@ def main():
 
     model_hparams = {
         'noise_size': args.noise_size,
+        'moe_sizes': [moe_in_size] + args.moe_sizes + [len(markers_of_interest)],
+        'batch_size': args.batch_size,
+        'num_markers': len(markers_of_interest),
         'num_experts': num_experts,
-        'num_top': args.num_top,
-        'learning_rate': args.learning_rate,
-        'moe_sizes':
-        [moe_in_size] + args.moe_sizes + [len(markers_of_interest)],
-        'gfilter': args.num_filters_generator,
-        'beta_1': args.beta_1,
-        'beta_2': args.beta_2,
-        'reg_lambda': args.reg_lambda,
-        'num_critic': args.num_critic,
-        'num_cell_per_input': args.num_cells_per_input,
-        'num_cell_cnns': args.num_cell_cnns,
-        'type_gan': args.type_gan,
+        'g_filters': args.num_filters_generator,
         'd_filters_min': args.d_filters_min,
         'd_filters_max': args.d_filters_max,
         'd_filters': d_filters.tolist(),
         'd_pooled': d_pooled.tolist(),
-        'batch_size': args.batch_size,
+        'coeff_l1': args.coeff_l1,
+        'coeff_l2': args.coeff_l2,
+        'coeff_act': args.coeff_act,
+        'num_top': args.num_top,
+        'dropout_prob': args.dropout_prob,
+        'noisy_gating': args.noisy_gating,
+        'noise_eps': args.noise_eps,
+        'lr': args.learning_rate,
+        'beta_1': args.beta_1,
+        'beta_2': args.beta_2,
+        'reg_lambda': args.reg_lambda,
+        'clip_val': args.clip_val,
+        'init_method': args.init_method,
+        'type_gan': args.type_gan,
+        'load_balancing': args.load_balancing,
+        'num_critic': args.num_critic,
+        'num_cell_per_input': args.num_cells_per_input,
+        'num_cell_cnns': args.num_cell_cnns,
+
     }
 
     model_path = os.path.join(output_dir, 'model.ckpt')
@@ -443,10 +458,10 @@ def main():
                     num_cells_per_input=num_samples,
                     noise_size=args.noise_size)
 
-                fetches = [model.g_sample, model.generator.gates]
+                fetches = [model.g_sample, model.generator.gates, model.generator.logits]
                 feed_dict = {model.Z: noise_sample}
 
-                fake_samples, gates = sess.run(
+                fake_samples, gates, logits = sess.run(
                     fetches=fetches, feed_dict=feed_dict)
                 fake_samples = fake_samples.reshape(num_samples,
                                                     len(markers_of_interest))
@@ -525,23 +540,13 @@ def main():
                     zero_sub=True)
 
                 cellgan_logger.info("PCA plots added. \n")
-                
-                # UMAP plot
-                cellgan_logger.info("Adding UMAP plots...")
 
-                plot_umap(
-                    out_dir=output_dir, umap_obj=um,
-                    real_subset=real_samples, 
-                    fake_subset=fake_samples, 
-                    real_subset_labels=real_sample_subs,
-                    fake_subset_labels=fake_sample_experts, 
-                    num_experts=num_experts,
-                    num_subpopulations=num_subpopulations,
-                    iteration=iteration,
-                    logger=cellgan_logger, 
-                    zero_sub=True)
+                # Plotting the heatmap of gating weights
+                cellgan_logger.info("Adding Heatmap...")
 
-                cellgan_logger.info("UMAP plots added. \n")
+                plot_heatmap(out_dir=output_dir, logits=logits, fake_subset_labels=fake_sample_experts)
+
+                cellgan_logger.info("Heatmap added")
 
                 # Save the model
                 cellgan_logger.info("Saving the model...")
