@@ -1,78 +1,55 @@
 
+import numpy as np
 import tensorflow as tf
-from model import CellGan
-import os
-import sys
 import json
+import sys
+import os
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-# --------------------------
-# Loading CellGan parameters
-# --------------------------
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.insert(0, ROOT_DIR)
+from lib.model import CellGan
 
 
-def load_model(model_dir, regex_folder):
+def load_model(out_dir):
 
-    h_params_file = os.path.join(model_dir, 'Hparams.txt')
-    with open(h_params_file, 'r') as f:
-        CellGan_params = json.load(f)
+    hparams_file = os.path.join(out_dir, 'Hparams.txt')
+    model_path = os.path.join(out_dir, 'model.ckpt')
 
-    train = True
-
-    model_name = 'model' + regex_folder + '.ckpt'
-    model_path = os.path.join(model_dir, model_name)
+    with open(hparams_file, 'r') as f:
+        hparams = json.load(f)
 
     with tf.Session() as sess:
 
-        print("Building CellGan...\n")
-
         model = CellGan(
-            noise_size=CellGan_params['noise_size'],
-            batch_size=CellGan_params['batch_size'],
-            moe_sizes=CellGan_params['moe_sizes'][1:-1],
-            num_experts=CellGan_params['num_experts'],
-            ncell=CellGan_params['ncell'],
-            nmark=CellGan_params['nmark'],
-            gfilter=CellGan_params['gfilter'],
-            dfilters=CellGan_params['dfilters'],
-            lr=CellGan_params['learning_rate'],
-            train=train,
-            beta1=CellGan_params['beta1'],
-            beta2=CellGan_params['beta2'],
-            n_top=CellGan_params['n_top'],
-            reg_lambda=CellGan_params['reg_lambda'],
-            typeGAN=CellGan_params['typeGAN'],
-            npooled=CellGan_params['npooled']
+            noise_size=hparams['noise_size'],
+            moe_sizes=hparams['moe_sizes'][1:-1],
+            batch_size=hparams['batch_size'],
+            num_markers=hparams['num_markers'],
+            num_experts=hparams['num_experts'],
+            g_filters=hparams['g_filters'],
+            d_filters=np.array(hparams['d_filters']),
+            d_pooled=np.array(hparams['d_pooled']),
+            coeff_l1=hparams['coeff_l1'],
+            coeff_l2=hparams['coeff_l2'],
+            coeff_act=hparams['coeff_act'],
+            num_top=hparams['num_top'],
+            dropout_prob=hparams['dropout_prob'],
+            noisy_gating=hparams['noisy_gating'],
+            noise_eps=hparams['noise_eps'],
+            lr=hparams['lr'],
+            beta_1=hparams['beta_1'],
+            beta_2=hparams['beta_2'],
+            reg_lambda=hparams['reg_lambda'],
+            clip_val=hparams['clip_val'],
+            train = True,
+            init_method=hparams['init_method'],
+            type_gan=hparams['type_gan'],
+            load_balancing=hparams['load_balancing']
         )
 
         saver = tf.train.Saver()
-        print("Loading Model: {} ...\n".format(model_name))
+        print("Loading Model")
         saver.restore(sess, model_path)
-        print("Model {} loaded \n".format(model_name))
-        print("CellGan Built for further analysis. \n")
+        print("Model Loaded")
 
-    return model, CellGan_params
-
-
-if __name__ == '__main__':
-
-    # Test to see if the code is running
-
-    inhibitor_used = 'AKTi'
-    regex_well = '_A05'
-    test = 1
-
-    hard_drive = os.path.join(sys.path[0], 'Real Data Tests')
-
-    if test < 10:
-        regex_folder = regex_well + '_0' + str(test)
-    else:
-        regex_folder = regex_well + '_' + str(test)
-
-    model_dir = os.path.join(hard_drive, inhibitor_used, regex_folder)
-
-    if not os.path.exists(model_dir):
-        raise NotADirectoryError('Directory does not exist. Please check provided inputs')
-
-    model, CellGan_params = load_model(model_dir=model_dir, regex_folder=regex_folder)
+    return model, hparams
