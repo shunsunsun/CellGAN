@@ -21,7 +21,7 @@ from lib.preprocessing import extract_marker_indices, read_fcs_data
 from lib.utils import write_hparams_to_file, f_trans
 from lib.utils import build_logger, generate_subset
 from lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
-from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_umap
+from lib.plotting import plot_marker_distributions, plot_pca, plot_umap
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
