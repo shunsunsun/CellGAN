@@ -52,7 +52,11 @@ class CellCnn(object):
 
         self.init = initializers[init_method]
 
-    def build_disc(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
+    def run(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
+
+        self._cellcnn(inputs=inputs, reuse=reuse, print_shape=print_shape)
+
+    def _cellcnn(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
         """
         Setup the discriminator architecture and return fake/real scores of each input, when
         invoked the first time. Reuses existing architecture and returns scores, otherwise.
@@ -166,5 +170,4 @@ if __name__ == '__main__':
     test_input = tf.placeholder(
         dtype=tf.float32, name='test_input', shape=[64, 100, 5])
 
-    testCellCnn.build_disc(
-        inputs=test_input, reuse=tf.AUTO_REUSE, print_shape=True)
+    testCellCnn.run(inputs=test_input, reuse=tf.AUTO_REUSE, print_shape=True)

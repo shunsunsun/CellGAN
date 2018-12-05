@@ -67,7 +67,11 @@ class CellCnnEnsemble(object):
                 coeff_act=self.hparams['coeff_act'],
                 dropout_prob=self.hparams['dropout_prob'])
 
-    def _build_ensemble(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
+    def run(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
+
+        return self._ensemble(inputs=inputs, reuse=reuse, print_shape=print_shape)
+
+    def _ensemble(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
         """
         Setup the architecture of each CellCnn and return fake/real scores for inputs,
         when invoked the first time. Reuses existing architecture and returns scores, otherwise.
@@ -85,7 +89,7 @@ class CellCnnEnsemble(object):
 
             for i in self.CellCnns:
 
-                self.outputs[i] = self.CellCnns[i].build_disc(
+                self.outputs[i] = self.CellCnns[i].run(
                     inputs=inputs, reuse=reuse, print_shape=print_shape)
 
         return self.outputs

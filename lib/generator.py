@@ -45,9 +45,6 @@ class CellGanGen(object):
                  moe_loss_coef=100,
                  init_method='xavier'):
 
-        self.experts = dict()
-        self.input_features = dict()
-
         # Adding generator hyperparameters
         self.hparams = dict()
         self.hparams['moe_sizes'] = moe_sizes
@@ -63,13 +60,12 @@ class CellGanGen(object):
         self.gating['noise_eps'] = noise_epsilon
 
         self.init = initializers[init_method]
-        self.moe_func = None
-        self.moe_loss = None
-        self.moe_input_size = None
-        self.gates = None
-        self.load = None
 
-    def build_gen(self, inputs, train, reuse=tf.AUTO_REUSE, print_shape=False):
+    def run(self, inputs, train, reuse=tf.AUTO_REUSE, print_shape=False):
+
+        return self._generator(inputs=inputs, train=train, reuse=reuse, print_shape=print_shape)
+
+    def _generator(self, inputs, train, reuse=tf.AUTO_REUSE, print_shape=False):
         """
         Builds the generator architecture, when invoked the first time. Generates data from
         learnt distribution otherwise.
@@ -123,7 +119,7 @@ class CellGanGen(object):
 
             # Run the mixture of experts module
             # moe_output expected shape: (batch_size*num_cells, num_markers)
-            moe_output, self.moe_loss, self.gates, self.load = local_moe(
+            moe_output, self.moe_loss, self.gates, self.load, self.logits = local_moe(
                 x=reshaped_conv1_output,
                 train=train,
                 expert_fn=self.moe_func,
@@ -175,5 +171,4 @@ if __name__ == '__main__':
 
     test_inputs = tf.placeholder(
         dtype=tf.float32, name='test_input', shape=[None, None, 20])
-    testCellGanGen.build_gen(
-        inputs=test_inputs, train=False, reuse=tf.AUTO_REUSE, print_shape=True)
+    testCellGanGen.run(inputs=test_inputs, train=False, reuse=tf.AUTO_REUSE, print_shape=True)
