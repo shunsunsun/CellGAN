@@ -95,6 +95,7 @@ class CellGan(object):
                  beta_1=0.9,
                  beta_2=0.999,
                  reg_lambda=10,
+                 clip_val=0.01,
                  train=False,
                  init_method='xavier',
                  type_gan='normal',
@@ -130,6 +131,7 @@ class CellGan(object):
         self.hparams['load_balancing'] = load_balancing
         self.hparams['reg_lambda'] = reg_lambda
         self.hparams['train'] = train
+        self.hparams['clip_val'] = clip_val
 
         # Optimizer Params
         if self.hparams['type_gan'] != 'wgan':
@@ -186,7 +188,7 @@ class CellGan(object):
         :return: output, a tensor of expected shape (batch_size, num_cells_per_input, num_markers)
         """
 
-        output = self.generator.build_gen(
+        output = self.generator.run(
             inputs=self.Z, train=self.hparams['train'], reuse=reuse)
 
         return output
@@ -200,7 +202,7 @@ class CellGan(object):
         :return: output, dictionary of tensors with discriminator scores for every cell
         """
 
-        output = self.discriminator._build_ensemble(inputs=inputs, reuse=reuse)
+        output = self.discriminator.run(inputs=inputs, reuse=reuse)
         return output
 
     def _calc_grad_norm(self, ys, xs):
@@ -319,7 +321,7 @@ class CellGan(object):
                 loss=self.g_loss, var_list=self.g_params)
 
             self.clip_D = [
-                p.assign(tf.clip_by_value(p, -0.01, 0.01))
+                p.assign(tf.clip_by_value(p, -self.hparams['clip_val'], self.hparams['clip_val']))
                 for p in self.d_params
             ]
 
@@ -341,6 +343,4 @@ class CellGan(object):
                 loss=self.g_loss, var_list=self.g_params)
 
 
-# TODO: Add the formulations for KL divergence, heat maps, pre-training clustering
-# TODO: Fix plotting issues
-# TODO: Make clip_value a parameter as well
+# TODO: Add Shannon entropy to loss
