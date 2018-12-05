@@ -4,6 +4,8 @@ import matplotlib
 matplotlib.use('Agg')
 from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
@@ -236,6 +238,36 @@ def plot_marker_distributions(out_dir,
         logger.info('Marker distribution plot for expert {} added.'.format(expert + 1))
 
 
+def plot_heatmap(out_dir, logits, fake_subset_labels):
+
+    """
+    Heat map plot
+    :param out_dir: str, output directory
+    :param logits: Tensor, unnormalized log probs of an expert generating a cell
+    :param fake_subset_labels: Which expert generates which cell
+    """
+
+    filename = os.path.join(out_dir, 'heatmap.png')
+    unique_experts = np.unique(fake_subset_labels)
+    expert_labels_series = pd.Series(fake_subset_labels)
+    lut = dict(zip(expert_labels_series.unique(),
+                   plt.cm.get_cmap('jet', len(unique_experts))(np.linspace(0, 1, len(unique_experts)))))
+
+    row_colors = expert_labels_series.map(lut)
+    plt.figure()
+
+    g = sns.clustermap(logits, row_colors=list(row_colors),
+                       yticklabels=False, xticklabels=True)
+
+    for expert in unique_experts:
+        g.ax_row_dendrogram.bar(0, 0, color=lut[expert], label=expert, linewidth=0)
+    g.ax_row_dendrogram.legend(loc="best", ncol=1, fancybox=True, framealpha=0.5)
+    plt.setp(g.ax_heatmap.get_xticklabels(), rotation=90)  # For x axis
+    plt.rcParams["xtick.labelsize"] = 6.5
+    plt.savefig(filename)
+    plt.close()
+
+
 def plot_loss(out_dir, disc_loss, gen_loss):
     """
     Saves loss plot to output directory
@@ -253,3 +285,4 @@ def plot_loss(out_dir, disc_loss, gen_loss):
     plt.legend()
     plt.savefig(filename)
     plt.close()
+
