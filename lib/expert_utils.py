@@ -463,6 +463,7 @@ def noisy_top_k_gating(x,
   Returns:
     gates: a Tensor with shape [batch_size, num_experts]
     load: a Tensor with shape [num_experts]
+    logits: a Tensor with shape [batch_size, num_experts]
   """
     with tf.variable_scope(name, default_name="noisy_top_k_gating"):
         input_size = x.get_shape().as_list()[-1]
@@ -501,7 +502,7 @@ def noisy_top_k_gating(x,
         if should_generate_summaries():
             tf.summary.histogram("importance", tf.reduce_sum(gates, 0))
             tf.summary.histogram("load", load)
-        return gates, load
+        return gates, load, logits
 
 
 class PadRemover(object):
@@ -986,7 +987,7 @@ def distributed_moe(data_parallelism,
     with tf.variable_scope(name, default_name="moe"):
         # The gates indicate which batch elements go to which tensors.
         # load is a measure of approximately how many examples go to each expert
-        gates, load = dp(
+        gates, load, logits = dp(
             noisy_top_k_gating,
             xs_flat,
             num_experts,
@@ -1050,7 +1051,7 @@ def local_moe(x,
 
         # The gates indicate which batch elements go to which tensors.
         # load is a measure of approximately how many examples go to each expert
-        gates, load = noisy_top_k_gating(
+        gates, load, logits = noisy_top_k_gating(
             x_flat,
             num_experts,
             train,
@@ -1079,7 +1080,7 @@ def local_moe(x,
 
         importance = tf.reduce_sum(gates, 0)
         loss = loss_coef * (cv_squared(importance) + cv_squared(load))
-        return y, loss, gates, load
+        return y, loss, gates, load, logits
 
 
 class TruncatingDispatcher(object):
