@@ -10,7 +10,6 @@ import seaborn as sns
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
             fake_subset, fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
-
     """ Generates plots for each expert based on given method 
     :param out_dir: results directory
     :param method: What type of plot (one of {pca, umap, tsne})
@@ -20,8 +19,10 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     :param fake_subset: Fake data from the generator 
     :param fake_subset_labels: Which expert generates which cell in fake data
     :param num_experts: Number of experts used
+    :param num_subpopulations: Number of subpopulations in the data
     :param iteration: which iteration of training are we at
     :param logger: logger used
+    :param zero_sub: Whether subpopulations labelled from 0 or 1
 
     """
     
@@ -90,7 +91,6 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
 
 def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset,
              fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
-
     """ Generates the PCA plot for each expert """
 
     plotter(out_dir=out_dir, method='pca', transformer=pca_obj, 
@@ -102,7 +102,6 @@ def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset,
 
 def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset,
               fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
-
     """ Generates the UMAP plot """
     
     plotter(out_dir=out_dir, method='umap', transformer=umap_obj, 
@@ -114,7 +113,6 @@ def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset,
 
 def plot_tsne(out_dir, tsne_obj, real_subset, real_subset_labels, fake_subset,
               fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
-
     """ Generates the tsne plot """
 
     plotter(out_dir=out_dir, method='tsne', transformer=tsne_obj, 
@@ -199,12 +197,12 @@ def plot_marker_distributions(out_dir,
                 bins = np.linspace(overall_min, overall_max, num=30)
 
                 w = np.ones_like(real_data_by_sub[:, marker]) / float(len(real_data_by_sub[:, marker]))
-                axes[sub, marker].hist(real_data_by_sub[:, marker], bins=bins, 
-                        weights=w, label='R',normed=0, alpha=0.5)
+                axes[sub, marker].hist(real_data_by_sub[:, marker], bins=bins,
+                                       weights=w, label='R',normed=0, alpha=0.5)
 
                 w = np.ones_like(fake_data_by_expert[:, marker]) / float(len(fake_data_by_expert[:, marker]))
                 axes[sub, marker].hist(fake_data_by_expert[:, marker], bins=bins,
-                        weights=w, label='F',normed=0, alpha=0.5)
+                                       weights=w, label='F',normed=0, alpha=0.5)
 
                 ks = ks_2samp(fake_data_by_expert[:, marker],
                               real_data_by_sub[:, marker])[0]
