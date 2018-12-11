@@ -29,7 +29,7 @@ def f_trans(x, c):
     :param c: float, cofactor
     :return: transformed data
     """
-    return np.arcsinh(1. / c * x)
+    return np.arcsinh(x / c)
 
 
 def get_filters(num_cell_cnns, low, high):
@@ -102,7 +102,7 @@ def build_gaussian_training_set(num_subpopulations,
     sd = list()
 
     for i in range(num_subpopulations):
-        means.append(np.random.choice(range(1, 5), num_markers, replace=True))
+        means.append(np.random.choice(range(1, 10), num_markers, replace=True))
         sd.append(np.random.sample(num_markers))
 
     data = list()
@@ -214,7 +214,6 @@ def compute_outlier_weights(inputs,
 
 
 def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
-
     """q_sp method for computing outlier weights
     :param inputs: Input dataset
     :param subset_size: Size of the randomly sampled subset to compute outliers
@@ -269,7 +268,6 @@ def compute_l1(x, y):
 
 
 def compute_closest(x, y, metric='l2'):
-
     """Finds smallest distance to y for x (x is many data points)
     :param x: data point for which we want to compute the closest distance to
     :param y: subset in which we wish to find smallest distance to (Matrix)
