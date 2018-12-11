@@ -3,7 +3,7 @@ library(flowCore)
 # Helper function file accompanying run_flowSOM.R
 
 f_trans <- function(x, cofactor=5){
-  modified = asinh(1/(x * cofactor))
+  modified = asinh(x/cofactor)
   return(modified)
 }
 
