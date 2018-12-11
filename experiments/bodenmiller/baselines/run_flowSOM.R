@@ -13,7 +13,9 @@ setwd(dirname(current_path))
 #setwd(dir.name)
 source("flowSOM_utils.R")
 
-##### DATA LOADING AND PREPROCESSING #######
+###################################################
+######## Data Loading and Preprocessing ###########
+###################################################
 
 inhibitor = "_C03"
 DATA_DIR <- "../../../data/AKTi"
@@ -56,19 +58,32 @@ for (file in files_to_process){
 
 training_data <- flowCore::flowFrame(training_data)
 
-####### RUNNING THE FLOWSOM ######
+#######################################################################
+###### Running FlowSOM - manual and automatic number of clusters ######
+#######################################################################
 
-fSOM.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
-fSOM.res <- FlowSOM::BuildSOM(fSOM.res, colsToUse = NULL, xdim=20, ydim=20)
-fSOM.res <- FlowSOM::BuildMST(fSOM.res)
+# Automatic number of clusters
+fSOM_auto.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
+fSOM_auto.res <- FlowSOM::BuildSOM(fSOM_auto.res, colsToUse = NULL)
+fSOM_auto.res <- FlowSOM::BuildMST(fSOM_auto.res)
 
-# Additional meta-clustering step
-# Set max to 20 as that was the number of experts we used
-meta <- FlowSOM::MetaClustering(fSOM.res$map$codes, method = "metaClustering_consensus", max = 20)
+# Manual number of clusters
+fSOM_man.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
+fSOM_man.res <- FlowSOM::BuildSOM(fSOM_man.res, colsToUse = NULL, xdim = 20, ydim = 20)
+fSOM_man.res <- FlowSOM::BuildMST(fSOM_man.res)
 
-clusters <- meta[fSOM.res$map$mapping]
-unique(clusters)
+# Automatic meta clustering
+meta_auto <- FlowSOM::MetaClustering(fSOM_auto.res$map$codes, method = "metaClustering_consensus")
+clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
 
-###### PLOTTING RESULTS #######
+# Manual meta clustering
+#TODO(vsomnath): Set max to 20 as that was the number of experts we used?
+meta_man <- FlowSOM::MetaClustering(fSOM_man.res$map$codes, method = "metaClustering_consensus", max = 20)
+clusters_man <- meta_man[fSOM_man.res$map$mapping[, 1]]
 
-# Need to add KS plots to see what goes where
+###########################################
+####### Plotting distributions ############
+###########################################
+
+
+
