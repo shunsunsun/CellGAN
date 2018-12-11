@@ -23,7 +23,7 @@ from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.utils import build_logger
 from lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from lib.model import CellGan
-from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_umap, plot_heatmap
+from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_heatmap
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
