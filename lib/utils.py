@@ -216,7 +216,7 @@ def compute_outlier_weights(inputs,
 def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
 
     """q_sp method for computing outlier weights
-    :param inputs: dataset comprised of cells to be used for training
+    :param inputs: Input dataset
     :param subset_size: Size of the randomly sampled subset to compute outliers
     :param metric: Which distance metric to use (default l2)
     :return outlier_weights 
@@ -230,46 +230,67 @@ def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
             inputs.shape[0], size=subset_size, replace=True)
 
     sampled_subset = inputs[subset_indices, :]
-    dists = np.zeros(inputs.shape[0])
-
-    for index in range(len(dists)):
-        sample = inputs[index]
-        dists[index] = compute_closest(sample, sampled_subset, metric=metric)
-
+    dists = compute_closest(inputs, sampled_subset, metric=metric)
     outlier_weights = dists / dists.sum()
 
     return outlier_weights
 
 
+def compute_l2(x, y):
+
+    dists = np.zeros((x.shape[0], y.shape[0]))
+
+    x_squared = np.sum(np.square(x), axis=1)
+    y_squared = np.sum(np.square(y), axis=1)
+
+    dists += x_squared[:, np.newaxis]
+    dists += y_squared[np.newaxis, :]
+    x_dot_y = np.dot(x, y.T)
+
+    assert dists.shape == x_dot_y.shape
+
+    dists -= 2 * x_dot_y
+
+    return dists
+
+
+def compute_l1(x, y):
+
+    dists = np.zeros((x.shape[0], y.shape[0]))
+
+    for i in range(x.shape[0]):
+        sample = x[i, :]
+        sample_dists = np.abs(sample - y)
+        sample_dists = np.sum(sample_dists, axis=1)
+
+        dists[i] = sample_dists
+
+    return dists
+
+
 def compute_closest(x, y, metric='l2'):
 
-    """Finds smallest distance to y for x (x is a single data point) 
+    """Finds smallest distance to y for x (x is many data points)
     :param x: data point for which we want to compute the closest distance to
     :param y: subset in which we wish to find smallest distance to (Matrix)
-    :metric: Which distance metric to use (default l2)
+    :param metric: Which distance metric to use (default l2)
     :return: smallest_dist
     """
 
     if metric == 'l2':
 
-        dists = np.square(x - y)
-        dists = np.sum(dists, axis=1)
-
-        assert len(dists) == y.shape[0]
-
-        smallest_dist = np.min(dists)
+        dists = compute_l2(x, y)
+        smallest_dist = np.min(dists, axis=1)
+        assert len(smallest_dist) == x.shape[0]
 
     elif metric == 'l1':
 
-        dists = np.abs(x - y)
-        dists = np.sum(dists, axis=1)
-
-        assert len(dists) == y.shape[0]
-
-        smallest_dist = np.min(dists)
+        dists = compute_l1(x, y)
+        smallest_dist = np.min(dists, axis=1)
+        assert len(smallest_dist) == x.shape[0]
 
     else:
-        smallest_dist = 0
+        smallest_dist = np.zeros(len(x))
 
     return smallest_dist
 
@@ -320,16 +341,19 @@ def compute_frequency(labels, weighted=False):
     :return: label_counts (either as weights or as counts)
     """
 
-    labels = labels.reshape(-1)
-
+    labels = labels.flatten()
     counts = Counter(labels)
 
     if not weighted:
+
+        # Counts for different labels in sorted order
         counts = dict(sorted(counts.items(), key=lambda x: x[0]))
-        label_counts = {k+1:v for k, v in counts.items()}
+        label_counts = {k+1: v for k, v in counts.items()}
         return label_counts
 
     else:
+
+        # Return the frequencies of different labels
         label_sum = np.sum(list(counts.values()))
         label_counts = dict()
         for key in counts:
@@ -341,6 +365,7 @@ def compute_frequency(labels, weighted=False):
         return label_counts
 
 #TODO: Add an implementation for wasserstein distance as well
+
 
 def compute_ks(real_data, real_labels, fake_data, expert_labels,
                num_subpopulations, num_experts):
@@ -364,7 +389,7 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels,
         expert_indices = np.where(expert_labels == expert)[0]
 
         if len(expert_indices) == 0:
-            ks_sums.append([0] * num_subpopulations)
+            ks_sums.append([0] * num_subpopulations) #TODO: What to add here?
             continue
 
         else:
@@ -393,6 +418,33 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels,
     assert ks_sums.shape == (num_experts, num_subpopulations)
 
     return ks_sums
+
+
+def compute_mmd(x, y, kernel='rbf', sigma=0.01, biased=True):
+
+    if kernel == 'rbf':
+
+        gamma = 1 / (2 * (sigma ** 2))
+
+        k_xx = np.exp(-gamma * compute_l2(x, x))
+        k_xy = np.exp(-gamma * compute_l2(x, y))
+        k_yy = np.exp(-gamma * compute_l2(y, y))
+
+        if biased:
+            mmd = k_xx.mean() + k_yy.mean() - 2 * k_xy.mean()
+
+        else:
+            m = k_xx.shape[0]
+            n = k_yy.shape[0]
+
+            mmd = ((k_xx.sum() - m) / (m * (m - 1))
+                   + (k_yy.sum() - n) / (n * (n - 1))
+                   - 2 * k_xy.mean())
+
+    else:
+        raise NotImplementedError('No other kernels are supported currently')
+
+    return mmd
 
 
 def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
@@ -448,8 +500,9 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
                 try:
                     learnt_subpopulation_weights[
                         subpopulation+1] += expert_weights[expert]
-                except:
-                    KeyError
+
+                except KeyError:
+                    pass
 
     for key in learnt_subpopulation_weights:
         learnt_subpopulation_weights[key] = np.round(
