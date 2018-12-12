@@ -93,3 +93,11 @@ class CellCnnEnsemble(object):
                     inputs=inputs, reuse=reuse, print_shape=print_shape)
 
         return self.outputs
+
+
+if __name__ == '__main__':
+    testEnsemble = CellCnnEnsemble(d_filters=[1, 2, 3], d_pooled=[1, 1, 1], coeff_l1=0, coeff_l2=0, coeff_act=0,
+                                   init_method='xavier', dropout_prob=0.5)
+    test_inputs = tf.placeholder(
+        dtype=tf.float32, name='test_input', shape=[None, None, 20])
+    testEnsemble.run(inputs=test_inputs, reuse=tf.AUTO_REUSE, print_shape=True)
