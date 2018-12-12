@@ -382,7 +382,8 @@ def main():
                 # Iteration number and losses
                 cellgan_logger.info(
                     "We are at iteration: {}".format(iteration + 1))
-                cellgan_logger.info("Subset size used: {}".format(subset_size))
+                if args.subset_sample == 'outlier':
+                    cellgan_logger.info("Subset size used: {}".format(subset_size))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info(
