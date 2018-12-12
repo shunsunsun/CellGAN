@@ -54,7 +54,7 @@ class CellCnn(object):
 
     def run(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
 
-        self._cellcnn(inputs=inputs, reuse=reuse, print_shape=print_shape)
+        return self._cellcnn(inputs=inputs, reuse=reuse, print_shape=print_shape)
 
     def _cellcnn(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
         """
