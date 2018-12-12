@@ -6,6 +6,7 @@ from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from lib.utils import compute_mmd
 
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
@@ -57,6 +58,8 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             
             real_data_by_sub = transformed_real[indices]
 
+            mmd = compute_mmd(x=real_data_by_sub, y=fake_data_by_expert, kernel='rbf')
+
             f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
 
             # Second plot (Real Subpopulation, Fake Data)
@@ -64,8 +67,8 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
                             label='Subpopulation {}'.format(subpopulation+1))
             axes[1].scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='tab:orange',
                             label='Expert {}'.format(expert+1))
-            axes[1].set_xlabel('PC1')
-            axes[1].set_ylabel('PC2')
+
+            axes[1].title("MMD value: {}".format(mmd))
             axes[1].legend()
 
             # First plot
@@ -76,9 +79,25 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
                             label='Subpopulation {}'.format(subpopulation+1))
             axes[0].set_xlim([xmin, xmax])
             axes[0].set_ylim([ymin, ymax])
-            axes[0].set_xlabel('PC1')
-            axes[0].set_ylabel('PC2')
             axes[0].legend()
+
+            if method == 'pca':
+                axes[1].set_xlabel('PC1')
+                axes[1].set_ylabel('PC2')
+                axes[0].set_xlabel('PC1')
+                axes[0].set_ylabel('PC2')
+
+            elif method == 'umap':
+                axes[1].set_xlabel('UM1')
+                axes[1].set_ylabel('UM2')
+                axes[0].set_xlabel('UM1')
+                axes[0].set_ylabel('UM2')
+
+            else:
+                axes[1].set_xlabel('TSNE1')
+                axes[1].set_ylabel('TSNE2')
+                axes[0].set_xlabel('TSNE1')
+                axes[0].set_ylabel('TSNE2')
 
             savefile = os.path.join(expert_dir, 'Subpopulation_{}.png'.format(subpopulation+1))
             f.tight_layout()

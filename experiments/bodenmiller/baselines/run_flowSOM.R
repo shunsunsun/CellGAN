@@ -81,6 +81,9 @@ clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
 meta_man <- FlowSOM::MetaClustering(fSOM_man.res$map$codes, method = "metaClustering_consensus", max = 20)
 clusters_man <- meta_man[fSOM_man.res$map$mapping[, 1]]
 
+print(unique(clusters_auto))
+print(unique(clusters_man))
+
 ###########################################
 ####### Plotting distributions ############
 ###########################################
