@@ -180,8 +180,7 @@ def plot_marker_distributions(out_dir,
 
     for expert in range(num_experts):
 
-        f, axes = plt.subplots(nrows=num_subpopulations, 
-                ncols=num_markers, figsize=(30, 30))
+        f, axes = plt.subplots(nrows=num_subpopulations, ncols=num_markers, figsize=(30, 30))
 
         best_ks_sum = np.inf
 

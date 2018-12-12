@@ -112,7 +112,7 @@ def build_gaussian_training_set(num_subpopulations,
         temp_num_cells = int(num_cells * weights_subpopulations[i])
         data.append(
             np.random.normal(means[i], sd[i], (temp_num_cells, num_markers)))
-        y_sub_populations.append([i + 1] * temp_num_cells)
+        y_sub_populations.append([i] * temp_num_cells)
     data = np.vstack(data)
     y_sub_populations = np.concatenate(y_sub_populations)
 
