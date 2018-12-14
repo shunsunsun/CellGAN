@@ -121,6 +121,8 @@ def main():
                         choices=['random', 'outlier'],
                         help='Whether to bias the subset selection towards rare subpopulations')
 
+    parser.add_argument('--seed', default=None, type=int, help='Seed for reproducing results')
+
     parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float,
                         default=2e-4, help='Learning rate for the neural network')
 
