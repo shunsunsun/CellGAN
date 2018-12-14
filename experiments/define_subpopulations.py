@@ -2,15 +2,12 @@ import numpy as np
 import tensorflow as tf
 import sys
 import os
-import json
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.insert(0, ROOT_DIR)
 
-from lib.utils import compute_ks
+from lib.utils import compute_ks, sample_z, load_model
 from lib.model import CellGan
-from lib.utils import sample_z
-from experiments.load_model import load_model
 
 DEFAULT_INHIBITOR = 'AKTi'
 DEFAULT_OUT_DIR = os.path.join(ROOT_DIR, 'results/bodenmiller/cellgan', DEFAULT_INHIBITOR, '17-11_19-09-11')
