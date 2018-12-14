@@ -234,6 +234,7 @@ def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
 
     sampled_subset = inputs[subset_indices, :]
     dists = compute_closest(inputs, sampled_subset, metric=metric)
+    dists[dists <= 0] = 0
     outlier_weights = dists / dists.sum()
 
     return outlier_weights
