@@ -3,11 +3,6 @@ import numpy as np
 import os
 import sys
 import json
-
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.insert(0, ROOT_DIR)
-from lib.model import CellGan
-
 import matplotlib
 matplotlib.use('Agg')
 from collections import Counter
@@ -18,13 +13,17 @@ xav_init = tf.contrib.layers.xavier_initializer
 normal_init = tf.truncated_normal_initializer
 zero_init = tf.zeros_initializer
 
+DEFAULT_SUBSET_SIZE = 50
+
 # Different methods for initializing the data
 initializers = dict()
 initializers['xavier'] = xav_init
 initializers['normal'] = normal_init
 initializers['zeros'] = zero_init
 
-DEFAULT_SUBSET_SIZE = 50
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.insert(0, ROOT_DIR)
+from lib.model import CellGan
 
 
 def f_trans(x, c):
