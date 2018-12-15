@@ -27,10 +27,11 @@ from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_he
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-DEFAULT_INPUT_DIR = os.path.join(DATA_DIR, 'AKTi')
-DEFAULT_FCS_FILE = os.path.join(DEFAULT_INPUT_DIR, 'AKTi_fcs.csv')
+DEFAULT_INHIBITOR = 'AKTi'
+DEFAULT_INPUT_DIR = os.path.join(DATA_DIR, DEFAULT_INHIBITOR)
+DEFAULT_FCS_FILE = os.path.join(DEFAULT_INPUT_DIR, DEFAULT_INHIBITOR + '_fcs.csv')
 DEFAULT_MARKERS_FILE = os.path.join(DEFAULT_INPUT_DIR, 'markers.csv')
-DEFAULT_OUT_DIR = os.path.join(ROOT_DIR, 'results/bodenmiller/cellgan', 'AKTi')
+DEFAULT_OUT_DIR = os.path.join(ROOT_DIR, 'results/bodenmiller/cellgan', DEFAULT_INHIBITOR)
 
 
 def main():
@@ -326,6 +327,9 @@ def main():
         'num_critic': args.num_critic,
         'num_cell_per_input': args.num_cells_per_input,
         'num_cell_cnns': args.num_cell_cnns,
+        'inhibitor_strength': inhibitor_strength_used
+        'subpopulation_limit': args.subpopulation_limit
+        'cofactor': args.cofactor
 
     }
 
