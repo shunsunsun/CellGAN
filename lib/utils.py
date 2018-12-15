@@ -8,6 +8,7 @@ matplotlib.use('Agg')
 from collections import Counter
 import logging
 from scipy.stats import ks_2samp
+from scipy.stats import wasserstein_distance
 
 xav_init = tf.contrib.layers.xavier_initializer
 normal_init = tf.truncated_normal_initializer
@@ -369,7 +370,47 @@ def compute_frequency(labels, weighted=False):
 
         return label_counts
 
-#TODO: Add an implementation for wasserstein distance as well
+
+def compute_wasserstein(real_data, real_labels, fake_data, expert_labels,
+                        num_subpopulations, num_experts):
+
+    wass_sums = list()
+
+    for expert in range(num_experts):
+
+        wass_sum_per_expert = list()
+        expert_indices = np.where(expert_labels == expert)[0]
+
+        if len(expert_indices) == 0:
+            wass_sums.append([0] * num_subpopulations)  # TODO: What to add here?
+            continue
+
+        else:
+            fake_data_by_expert = fake_data[expert_indices, :]
+
+            for sub in range(num_subpopulations):
+                subs_indices = np.where(real_labels == sub)[0]
+
+                if len(subs_indices) == 0:
+                    wass_sum_per_expert.append(np.inf)
+                    continue
+
+                else:
+                    real_data_by_sub = real_data[subs_indices]
+                    wass_sum = np.sum([
+                        wasserstein_distance(real_data_by_sub[:, marker],
+                                             fake_data_by_expert[:, marker])
+                        for marker in range(real_data.shape[-1])
+                    ])
+
+                    wass_sum_per_expert.append(wass_sum)
+
+        wass_sums.append(wass_sum_per_expert)
+
+    wass_sums = np.asarray(wass_sums)
+    assert wass_sums.shape == (num_experts, num_subpopulations)
+
+    return wass_sums
 
 
 def compute_ks(real_data, real_labels, fake_data, expert_labels,
