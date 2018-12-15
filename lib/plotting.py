@@ -68,7 +68,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             axes[1].scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='tab:orange',
                             label='Expert {}'.format(expert+1))
 
-            axes[1].title("MMD value: {}".format(mmd))
+            axes[1].set_title("MMD value: {}".format(mmd))
             axes[1].legend()
 
             # First plot
