@@ -151,7 +151,7 @@ def plot_marker_distributions(out_dir,
                               num_experts,
                               marker_names,
                               iteration,
-                              logger,
+                              logger=None,
                               zero_sub=False):
     """
     Plots the marker distribution per expert for each subpopulation and computes KS test and picks the best matching
@@ -251,7 +251,8 @@ def plot_marker_distributions(out_dir,
         plt.savefig(filename)
         plt.close()
 
-        logger.info('Marker distribution plot for expert {} added.'.format(expert + 1))
+        if logger is not None:
+            logger.info('Marker distribution plot for expert {} added.'.format(expert + 1))
 
 
 def plot_heatmap(out_dir, logits, fake_subset_labels):
