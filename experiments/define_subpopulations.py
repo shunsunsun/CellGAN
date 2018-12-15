@@ -6,12 +6,18 @@ import os
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.insert(0, ROOT_DIR)
 
-from lib.utils import compute_ks, sample_z, load_model
+from lib.utils import sample_z, compute_wasserstein, load_model, compute_ks, build_logger
+from lib.plotting import plot_expert_vs_expert_markers
 from lib.model import CellGan
 
 DEFAULT_INHIBITOR = 'AKTi'
 DEFAULT_OUT_DIR = os.path.join(ROOT_DIR, 'results/bodenmiller/cellgan', DEFAULT_INHIBITOR, '17-11_19-09-11')
 DEFAULT_NUM_SAMPLES = 8350
+
+DEFAULT_MARKERS = [
+    'CD3', 'CD45', 'CD4', 'CD20', 'CD33', 'CD123', 'CD14', 'IgM', 'HLA-DR',
+    'CD7'
+]
 
 with tf.Session() as sess:
 
@@ -33,14 +39,6 @@ with tf.Session() as sess:
 
     fake_sample_experts = np.argmax(gates, axis=1)
 
-    expert_expert_ks = compute_ks(real_data=fake_samples, real_labels=fake_sample_experts,
-                                  fake_data=fake_samples, expert_labels=fake_sample_experts,
-                                  num_subpopulations=hparams['num_experts'],
-                                  num_experts=hparams['num_experts'])
-
-
-
-
-
-
-
+    plot_expert_vs_expert_markers(out_dir=DEFAULT_OUT_DIR, fake_subset=fake_samples,
+                                  fake_subset_labels=fake_sample_experts, num_experts=hparams['num_experts'],
+                                  num_markers=len(DEFAULT_MARKERS), marker_names=DEFAULT_MARKERS, zero_sub=True)
