@@ -601,4 +601,4 @@ def load_model(out_dir, session_obj):
     saver.restore(session_obj, model_path)
     print("Model Loaded")
 
-    return model, hparams
+    return model
