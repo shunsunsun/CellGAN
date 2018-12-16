@@ -88,7 +88,8 @@ class CellGan(object):
                  coeff_l2=1e-4,
                  coeff_act=0,
                  dropout_prob=0.5,
-                 lr=1e-4,
+                 d_lr=2e-4,
+                 g_lr=2e-4,
                  num_top=1,
                  noisy_gating=True,
                  noise_eps=1e-2,
@@ -136,13 +137,15 @@ class CellGan(object):
         # Optimizer Params
         if self.hparams['type_gan'] != 'wgan':
             self.adam_optimizer = dict()
-            self.adam_optimizer['learning_rate'] = lr
+            self.adam_optimizer['disc_learning_rate'] = d_lr
+            self.adam_optimizer['gen_learning_rate'] = g_lr
             self.adam_optimizer['beta_1'] = beta_1
             self.adam_optimizer['beta_2'] = beta_2
 
         else:
             self.rms_prop_optimizer = dict()
-            self.rms_prop_optimizer['learning_rate'] = lr
+            self.rms_prop_optimizer['disc_learning_rate'] = d_lr
+            self.rms_prop_optimizer['gen_learning_rate'] = g_lr
 
         self._create_placeholders()
         self._compute_loss()
@@ -310,9 +313,9 @@ class CellGan(object):
         if self.hparams['type_gan'] == 'wgan':
 
             d_opt = tf.train.RMSPropOptimizer(
-                learning_rate=self.rms_prop_optimizer['learning_rate'])
+                learning_rate=self.rms_prop_optimizer['disc_learning_rate'])
             g_opt = tf.train.RMSPropOptimizer(
-                learning_rate=self.rms_prop_optimizer['learning_rate'])
+                learning_rate=self.rms_prop_optimizer['gen_learning_rate'])
 
             self.d_solver = d_opt.minimize(
                 loss=self.d_loss, var_list=self.d_params)
@@ -328,11 +331,11 @@ class CellGan(object):
         # Use Adam Optimizer otherwise
         else:
             d_opt = tf.train.AdamOptimizer(
-                learning_rate=self.adam_optimizer['learning_rate'],
+                learning_rate=self.adam_optimizer['disc_learning_rate'],
                 beta1=self.adam_optimizer['beta_1'],
                 beta2=self.adam_optimizer['beta_2'])
             g_opt = tf.train.AdamOptimizer(
-                learning_rate=self.adam_optimizer['learning_rate'],
+                learning_rate=self.adam_optimizer['gen_learning_rate'],
                 beta1=self.adam_optimizer['beta_1'],
                 beta2=self.adam_optimizer['beta_2'])
 

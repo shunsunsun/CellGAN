@@ -124,8 +124,10 @@ def main():
 
     parser.add_argument('--seed', default=None, type=int, help='Seed for reproducing results')
 
-    parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float,
-                        default=2e-4, help='Learning rate for the neural network')
+    parser.add_argument('-d_lr', '--disc_learning_rate', dest='disc_learning_rate', type=float,
+                        default=2e-4, help='Learning rate for the discriminator')
+    parser.add_argument('-g_lr', '--gen_learning_rate', dest='gen_learning_rate', type=float, 
+                        default=2e-4, help='Learning rate for the generator')
 
     parser.add_argument('--num_critic', dest='num_critic', type=int, default=2,
                         help='Discriminator/Generator training Ratio')
@@ -284,7 +286,8 @@ def main():
         dropout_prob=args.dropout_prob,
         noisy_gating=args.noisy_gating,
         noise_eps=args.noise_eps,
-        lr=args.learning_rate,
+        d_lr=args.disc_learning_rate,
+        g_lr=args.gen_learning_rate,
         beta_1=args.beta_1,
         beta_2=args.beta_2,
         reg_lambda=args.reg_lambda,
@@ -316,7 +319,8 @@ def main():
         'dropout_prob': args.dropout_prob,
         'noisy_gating': args.noisy_gating,
         'noise_eps': args.noise_eps,
-        'lr': args.learning_rate,
+        'd_lr': args.disc_learning_rate,
+        'g_lr': args.gen_learning_rate,
         'beta_1': args.beta_1,
         'beta_2': args.beta_2,
         'reg_lambda': args.reg_lambda,
