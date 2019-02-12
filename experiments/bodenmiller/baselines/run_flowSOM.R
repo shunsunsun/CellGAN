@@ -17,7 +17,7 @@ source("flowSOM_utils.R")
 ######## Data Loading and Preprocessing ###########
 ###################################################
 
-inhibitor = "_C03"
+inhibitor = "A02"
 DATA_DIR <- "../../../data/AKTi"
 
 files_to_process <- list.files(DATA_DIR, pattern=inhibitor)
@@ -81,12 +81,10 @@ clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
 meta_man <- FlowSOM::MetaClustering(fSOM_man.res$map$codes, method = "metaClustering_consensus", max = 20)
 clusters_man <- meta_man[fSOM_man.res$map$mapping[, 1]]
 
-print(unique(clusters_auto))
-print(unique(clusters_man))
+print("F-Measure using automatic clusters")
+print(compute_f_measure(training_labels, clusters_auto))
 
-###########################################
-####### Plotting distributions ############
-###########################################
-
+print("F-Measure using manual clusters")
+print(compute_f_measure(training_labels, clusters_man))
 
 
