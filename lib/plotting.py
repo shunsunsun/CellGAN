@@ -6,7 +6,7 @@ from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from lib.utils import compute_mmd
+# from lib.utils import compute_mmd
 
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
@@ -37,9 +37,24 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     transformed_real = transformer.transform(real_subset)
     transformed_fake = transformer.transform(fake_subset)
 
+    label_dict = {'pca': ['PC1', 'PC2'], 'umap': ['UM1', 'UM2'], 'tsne': ['TSNE1', 'TSNE2']}
+    labels = label_dict[method]
+
+    # All real vs expert
+    plt.figure()
+    cmap = matplotlib.cm.get_cmap('viridis')
+    colors = cmap(np.linspace(0, 1, len(np.unique(real_subset_labels))))
+    for i, subsets in enumerate(np.unique(real_subset_labels)):
+        temp_ind = np.where(np.asarray(real_subset_labels) == subsets)[0]
+        plt.scatter(transformed_real[temp_ind, 0], transformed_real[temp_ind, 1], c=colors[i].reshape((1, 4)), s=1)
+    plt.scatter(transformed_fake[:, 0], transformed_fake[:, 1], c='red', s=1)
+    plt.xlabel(labels[0])
+    plt.ylabel(labels[1])
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, method + '_all-real_vs_expert.pdf'))
+    plt.close()
+
     for expert in range(num_experts):
-        
-        # A directory for each expert
         expert_dir = os.path.join(method_dir, 'Expert_{}'.format(expert+1))
         if not os.path.exists(expert_dir):
             os.makedirs(expert_dir)
@@ -58,7 +73,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             
             real_data_by_sub = transformed_real[indices]
 
-            mmd = compute_mmd(x=real_data_by_sub, y=fake_data_by_expert, kernel='rbf')
+            # mmd = compute_mmd(x=real_data_by_sub, y=fake_data_by_expert, kernel='rbf')
 
             f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
 
@@ -68,7 +83,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             axes[1].scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='tab:orange',
                             label='Expert {}'.format(expert+1))
 
-            axes[1].set_title("MMD value: {}".format(mmd))
+            # axes[1].set_title("MMD value: {}".format(mmd))
             axes[1].legend()
 
             # First plot
@@ -81,28 +96,30 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             axes[0].set_ylim([ymin, ymax])
             axes[0].legend()
 
-            if method == 'pca':
-                axes[1].set_xlabel('PC1')
-                axes[1].set_ylabel('PC2')
-                axes[0].set_xlabel('PC1')
-                axes[0].set_ylabel('PC2')
+            axes[1].set_xlabel(labels[0])
+            axes[1].set_ylabel(labels[1])
+            axes[0].set_xlabel(labels[0])
+            axes[0].set_ylabel(labels[1])
 
-            elif method == 'umap':
-                axes[1].set_xlabel('UM1')
-                axes[1].set_ylabel('UM2')
-                axes[0].set_xlabel('UM1')
-                axes[0].set_ylabel('UM2')
-
-            else:
-                axes[1].set_xlabel('TSNE1')
-                axes[1].set_ylabel('TSNE2')
-                axes[0].set_xlabel('TSNE1')
-                axes[0].set_ylabel('TSNE2')
-
-            savefile = os.path.join(expert_dir, 'Subpopulation_{}.png'.format(subpopulation+1))
+            savefile = os.path.join(expert_dir, 'Subpopulation_{}.pdf'.format(subpopulation+1))
             f.tight_layout()
             plt.savefig(savefile)
             plt.close()
+
+            # plot all real vs expert
+        plt.figure()
+        cmap = matplotlib.cm.get_cmap('viridis')
+        colors = cmap(np.linspace(0, 1, len(np.unique(real_subset_labels))))
+        for i, subsets in enumerate(np.unique(real_subset_labels)):
+            temp_ind = np.where(np.asarray(real_subset_labels) == subsets)[0]
+            plt.scatter(transformed_real[temp_ind, 0], transformed_real[temp_ind, 1], c=colors[i].reshape((1, 4)),
+                        s=1)
+        plt.scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='red', s=1)
+        plt.xlabel(labels[0])
+        plt.ylabel(labels[1])
+        plt.tight_layout()
+        plt.savefig(os.path.join(method_dir, method + '_all-real_vs_expert_' + str(expert) + '.pdf'))
+        plt.close()
 
         logger.info(method.upper() + ' plots added for expert {}'.format(str(expert+1)))
     logger.info("\n")
@@ -138,7 +155,7 @@ def plot_tsne(out_dir, tsne_obj, real_subset, real_subset_labels, fake_subset,
             real_subset=real_subset, real_subset_labels=real_subset_labels, 
             fake_subset=fake_subset, fake_subset_labels=fake_subset_labels, 
             num_experts=num_experts, num_subpopulations=num_subpopulations,
-            iteration=iteration, logger=logger)
+            iteration=iteration, logger=logger, zero_sub=zero_sub)
 
 
 def plot_marker_distributions(out_dir,
@@ -184,7 +201,7 @@ def plot_marker_distributions(out_dir,
 
         best_ks_sum = np.inf
 
-        filename = os.path.join(save_dir, 'Expert_' + str(expert + 1) + '.png')
+        filename = os.path.join(save_dir, 'Expert_' + str(expert + 1) + '.pdf')
         indices = np.flatnonzero(fake_subset_labels == expert)
 
         # Fake data generated by expert in the GAN
@@ -264,7 +281,7 @@ def plot_heatmap(out_dir, logits, fake_subset_labels):
     :param fake_subset_labels: Which expert generates which cell
     """
 
-    filename = os.path.join(out_dir, 'heatmap.png')
+    filename = os.path.join(out_dir, 'heatmap.pdf')
     unique_experts = np.unique(fake_subset_labels)
     expert_labels_series = pd.Series(fake_subset_labels)
     lut = dict(zip(expert_labels_series.unique(),
@@ -294,7 +311,7 @@ def plot_loss(out_dir, disc_loss, gen_loss):
     :return: no returns
     """
 
-    filename = os.path.join(out_dir, 'loss_plot.png')
+    filename = os.path.join(out_dir, 'loss_plot.pdf')
     plt.plot(range(len(disc_loss)), disc_loss, 'r', label='Discriminator Loss')
     plt.plot(range(len(gen_loss)), gen_loss, 'b', label='Generator Loss')
     plt.xlabel('Number of Iterations')
@@ -324,7 +341,7 @@ def plot_expert_vs_expert_markers(out_dir,
 
         best_ks_sum = np.inf
 
-        filename = os.path.join(save_dir, 'Expert_' + str(expert + 1) + '.png')
+        filename = os.path.join(save_dir, 'Expert_' + str(expert + 1) + '.pdf')
         indices = np.flatnonzero(fake_subset_labels == expert)
 
         # Fake data generated by expert in the GAN
