@@ -280,7 +280,6 @@ def main():
         'num_critic': args.num_critic,
         'num_cell_per_input': args.num_cells_per_input,
         'num_cell_cnns': args.num_cell_cnns,
-        'cofactor': args.cofactor
 
     }
 
@@ -392,7 +391,6 @@ def main():
                 # Iteration number and losses
                 cellgan_logger.info(
                     "We are at iteration: {}".format(iteration + 1))
-                cellgan_logger.info("Subset size used: {}".format(subset_size))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info(
