@@ -23,7 +23,7 @@ from lib.utils import generate_subset, sample_z, compute_outlier_weights
 from lib.utils import build_logger
 from lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from lib.model import CellGan
-from lib.plotting import plot_marker_distributions, plot_loss, plot_pca, plot_heatmap
+from lib.plotting import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -365,7 +365,7 @@ def main():
     pca = pca.fit(training_data)
 
     # Fit UMAP object
-    um = umap.UMAP(n_neighbors=10)
+    um = umap.UMAP()
     um = um.fit(training_data)
 
     with tf.Session() as sess:
@@ -549,6 +549,22 @@ def main():
                     zero_sub=True)
 
                 cellgan_logger.info("PCA plots added. \n")
+
+                # UMAP plot
+
+                cellgan_logger.info("Adding UMAP plots")
+                plot_umap(
+                    out_dir=output_dir, umap_obj=um,
+                    real_subset=real_samples,
+                    fake_subset=fake_samples,
+                    real_subset_labels=real_sample_subs,
+                    fake_subset_labels=fake_sample_experts,
+                    num_experts=num_experts,
+                    num_subpopulations=num_subpopulations,
+                    iteration=iteration,
+                    logger=cellgan_logger,
+                    zero_sub=True)
+                cellgan_logger.info("UMAP plots added. \n")
 
                 # Plotting the heatmap of gating weights
                 cellgan_logger.info("Adding Heatmap...")
