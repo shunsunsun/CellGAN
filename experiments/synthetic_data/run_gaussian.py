@@ -280,7 +280,6 @@ def main():
         'num_critic': args.num_critic,
         'num_cell_per_input': args.num_cells_per_input,
         'num_cell_cnns': args.num_cell_cnns,
-        'subpopulation_limit': args.subpopulation_limit,
         'cofactor': args.cofactor
 
     }
