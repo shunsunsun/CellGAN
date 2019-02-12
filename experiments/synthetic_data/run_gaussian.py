@@ -111,8 +111,11 @@ def main():
                         choices=['random', 'outlier'],
                         help='Whether to bias the subset selection towards rare subpopulations')
 
-    parser.add_argument('-lr', '--learning_rate', dest='learning_rate', type=float,
-                        default=2e-4, help='Learning rate for the neural network')
+    parser.add_argument('-d_lr', '--disc_learning_rate', dest='disc_learning_rate', type=float,
+                        default=2e-4, help='Learning rate for the discriminator')
+
+    parser.add_argument('-g_lr', '--gen_learning_rate', dest='gen_learning_rate', type=float,
+                        default=2e-4, help='Learning rate for the generator')
 
     parser.add_argument('--num_critic', dest='num_critic', type=int, default=2,
                         help='Discriminator/Generator training Ratio')
@@ -150,7 +153,7 @@ def main():
     args = parser.parse_args()
 
     num_subpopulations = args.num_subpopulations
-    weight_subpopulations = args.weights_subpopulations
+    weights_subpopulations = args.weights_subpopulations
     num_markers = args.num_markers
     num_cells = args.num_cells
 
@@ -173,7 +176,7 @@ def main():
         num_subpopulations=num_subpopulations,
         num_cells=num_cells,
         num_markers=num_markers,
-        weights_subpopulations=weight_subpopulations
+        weights_subpopulations=weights_subpopulations
     )
 
     start_time = time.time()
@@ -232,7 +235,8 @@ def main():
         dropout_prob=args.dropout_prob,
         noisy_gating=args.noisy_gating,
         noise_eps=args.noise_eps,
-        lr=args.learning_rate,
+        d_lr=args.disc_learning_rate,
+        g_lr=args.gen_learning_rate,
         beta_1=args.beta_1,
         beta_2=args.beta_2,
         reg_lambda=args.reg_lambda,
@@ -248,9 +252,9 @@ def main():
 
     model_hparams = {
         'noise_size': args.noise_size,
-        'moe_sizes': [moe_in_size] + args.moe_sizes + [num_markers],
+        'moe_sizes': [moe_in_size] + args.moe_sizes + [args.num_markers],
         'batch_size': args.batch_size,
-        'num_markers': num_markers,
+        'num_markers': args.num_markers,
         'num_experts': num_experts,
         'g_filters': args.num_filters_generator,
         'd_filters_min': args.d_filters_min,
@@ -264,7 +268,8 @@ def main():
         'dropout_prob': args.dropout_prob,
         'noisy_gating': args.noisy_gating,
         'noise_eps': args.noise_eps,
-        'lr': args.learning_rate,
+        'd_lr': args.disc_learning_rate,
+        'g_lr': args.gen_learning_rate,
         'beta_1': args.beta_1,
         'beta_2': args.beta_2,
         'reg_lambda': args.reg_lambda,
@@ -275,6 +280,8 @@ def main():
         'num_critic': args.num_critic,
         'num_cell_per_input': args.num_cells_per_input,
         'num_cell_cnns': args.num_cell_cnns,
+        'subpopulation_limit': args.subpopulation_limit,
+        'cofactor': args.cofactor
 
     }
 
@@ -295,18 +302,17 @@ def main():
         "number of cells pooled in the CellCnn Ensemble are: {} \n".format(
             d_pooled))
 
-    # Fit PCA object
+    # Training the Gan
+    discriminator_loss = list()
+    generator_loss = list()
+
+    # Fit PCA object already
     pca = PCA(n_components=2)
     pca = pca.fit(training_data)
 
     # Fit UMAP object
     um = umap.UMAP()
     um = um.fit(training_data)
-
-    # Training the GAN
-
-    discriminator_loss = list()
-    generator_loss = list()
 
     with tf.Session() as sess:
 
@@ -387,8 +393,7 @@ def main():
                 # Iteration number and losses
                 cellgan_logger.info(
                     "We are at iteration: {}".format(iteration + 1))
-                if args.subset_sample == 'outlier':
-                    cellgan_logger.info("Subset size used: {}".format(subset_size))
+                cellgan_logger.info("Subset size used: {}".format(subset_size))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info(
@@ -396,14 +401,9 @@ def main():
 
                 # Actual weights & sampled weights
                 cellgan_logger.info("The actual subpopulation weights are: {}".
-                                    format(weight_subpopulations))
-
-                if args.subset_sample == 'outlier':
-                    cellgan_logger.info("Weights after outlier based sampling: {} \n".format(
-                        frequency_sampled_batch))
-
-                else:
-                    cellgan_logger.info("Weights after random sampling: {} \n".format(
+                                    format(weights_subpopulations))
+                cellgan_logger.info(
+                    "Weights after outlier based sampling: {} \n".format(
                         frequency_sampled_batch))
 
                 # Sample fake data for testing
@@ -445,7 +445,7 @@ def main():
                                                          num_subpopulations=num_subpopulations)
 
                 cellgan_logger.info("The actual subpopulation weights are: {}".
-                                    format(weight_subpopulations))
+                                    format(weights_subpopulations))
                 cellgan_logger.info(
                     "The learnt subpopulation weights are: {} \n".format(learnt_subpopulation_weights))
 
@@ -511,7 +511,9 @@ def main():
 
                 # Plotting the heatmap of gating weights
                 cellgan_logger.info("Adding Heatmap...")
+
                 plot_heatmap(out_dir=output_dir, logits=logits, fake_subset_labels=fake_sample_experts)
+
                 cellgan_logger.info("Heatmap added")
 
                 # Save the model
@@ -525,5 +527,4 @@ def main():
 
 
 if __name__ == '__main__':
-
     main()
