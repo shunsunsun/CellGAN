@@ -31,10 +31,11 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
 
     # Create a separate directory for the method 
     save_dir = os.path.join(dirname, method + '_plots')
-    
+
     # Transform data according to transformer based on method
-    transformed_real = transformer.transform(real_subset)
-    transformed_fake = transformer.transform(fake_subset)
+    transformed = transformer.transform(np.vstack([real_subset, fake_subset]))
+    transformed_real = transformed[:real_subset.shape[0], :]
+    transformed_fake = transformed[real_subset.shape[0]:, :]
 
     label_dict = {'pca': ['PC1', 'PC2'], 'umap': ['UM1', 'UM2'], 'tsne': ['TSNE1', 'TSNE2']}
     labels = label_dict[method]
@@ -121,8 +122,11 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
         plt.savefig(os.path.join(save_dir, 'All-real_vs_expert_' + str(expert) + '.png'))
         plt.close()
 
-        logger.info(method.upper() + ' plots added for expert {}'.format(str(expert+1)))
-    logger.info("\n")
+        if logger is not None:
+            logger.info(method.upper() + ' plots added for expert {}'.format(str(expert+1)))
+
+    if logger is not None:
+        logger.info("\n")
 
 
 def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset,

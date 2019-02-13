@@ -572,9 +572,6 @@ def main():
                     logger=cellgan_logger,
                     zero_sub=True)
 
-                with open(os.path.join(output_dir, str(iteration+1), 'expert_assignment.csv')) as f:
-                    f.write(json.dumps(expert_assignments))
-
                 # Umap on fake data
                 um2 = umap.UMAP(n_neighbors=5, min_dist=0.3, metric='correlation')
                 um2.fit(fake_samples)
