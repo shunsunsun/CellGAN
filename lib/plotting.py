@@ -6,7 +6,6 @@ from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-# from lib.utils import compute_mmd
 
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
@@ -28,10 +27,10 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     """
     
     # The actual directory where results are saved
-    save_dir = os.path.join(out_dir, str((iteration // 100) + 1))
+    dirname = os.path.join(out_dir, str(iteration + 1))
 
     # Create a separate directory for the method 
-    method_dir = os.path.join(save_dir, method + '_plots')
+    save_dir = os.path.join(dirname, method + '_plots')
     
     # Transform data according to transformer based on method
     transformed_real = transformer.transform(real_subset)
@@ -40,7 +39,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     label_dict = {'pca': ['PC1', 'PC2'], 'umap': ['UM1', 'UM2'], 'tsne': ['TSNE1', 'TSNE2']}
     labels = label_dict[method]
 
-    # All real vs expert
+    # All real vs all expert
     plt.figure()
     cmap = matplotlib.cm.get_cmap('viridis')
     colors = cmap(np.linspace(0, 1, len(np.unique(real_subset_labels))))
@@ -51,11 +50,11 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     plt.xlabel(labels[0])
     plt.ylabel(labels[1])
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, method + '_all-real_vs_expert.pdf'))
+    plt.savefig(os.path.join(dirname, method + '_all-real_vs_all_expert.pdf'))
     plt.close()
 
     for expert in range(num_experts):
-        expert_dir = os.path.join(method_dir, 'Expert_{}'.format(expert+1))
+        expert_dir = os.path.join(save_dir, 'Expert_{}'.format(expert+1))
         if not os.path.exists(expert_dir):
             os.makedirs(expert_dir)
         
@@ -106,7 +105,7 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
             plt.savefig(savefile)
             plt.close()
 
-            # plot all real vs expert
+        # All real vs single expert
         plt.figure()
         cmap = matplotlib.cm.get_cmap('viridis')
         colors = cmap(np.linspace(0, 1, len(np.unique(real_subset_labels))))
@@ -117,8 +116,9 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
         plt.scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='red', s=1)
         plt.xlabel(labels[0])
         plt.ylabel(labels[1])
+        plt.title('Expert {}'.format(expert+1))
         plt.tight_layout()
-        plt.savefig(os.path.join(method_dir, method + '_all-real_vs_expert_' + str(expert) + '.pdf'))
+        plt.savefig(os.path.join(save_dir, 'All-real_vs_expert_' + str(expert) + '.png'))
         plt.close()
 
         logger.info(method.upper() + ' plots added for expert {}'.format(str(expert+1)))
@@ -189,7 +189,7 @@ def plot_marker_distributions(out_dir,
     :return:
     """
 
-    dirname = os.path.join(out_dir, str((iteration // 100) + 1))
+    dirname = os.path.join(out_dir, str(iteration + 1))
     save_dir = os.path.join(dirname, 'distributions')
 
     if not os.path.exists(save_dir):
@@ -247,7 +247,7 @@ def plot_marker_distributions(out_dir,
                 ticks = np.linspace(overall_min, overall_max, num=5)
                 axes[sub, marker].set_xticks(ticks.round(2))
 
-                axes[sub, marker].set_title('{}'.format(marker_names[marker]))
+                axes[sub, marker].set_title(marker_names[marker] + ', KS:' + str(np.round(ks, 3)))
                 axes[sub, marker].set_ylabel(
                     'Subpopulation {}'.format(sub + 1))
                 axes[sub, marker].legend()
@@ -272,16 +272,17 @@ def plot_marker_distributions(out_dir,
             logger.info('Marker distribution plot for expert {} added.'.format(expert + 1))
 
 
-def plot_heatmap(out_dir, logits, fake_subset_labels):
+def plot_heatmap(out_dir, iteration, logits, fake_subset_labels):
 
     """
     Heat map plot
     :param out_dir: str, output directory
+    :param iteration: iteration number
     :param logits: Tensor, unnormalized log probs of an expert generating a cell
     :param fake_subset_labels: Which expert generates which cell
     """
 
-    filename = os.path.join(out_dir, 'heatmap.pdf')
+    filename = os.path.join(out_dir, str(iteration+1), 'heatmap.pdf')
     unique_experts = np.unique(fake_subset_labels)
     expert_labels_series = pd.Series(fake_subset_labels)
     lut = dict(zip(expert_labels_series.unique(),
