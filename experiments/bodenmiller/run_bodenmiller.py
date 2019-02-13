@@ -12,6 +12,7 @@ import tensorflow as tf
 from sklearn.decomposition import PCA
 import umap
 
+# TODO: Need to get rid of this ROOT_DIR import
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.insert(0, ROOT_DIR)
 
@@ -154,7 +155,7 @@ def main():
     parser.add_argument('--num_iter', dest='num_iterations', type=int,
                         default=10000, help='Number of iterations to run the GAN')
 
-    # Testing specific
+    # Testing and plotting
 
     parser.add_argument('--num_samples', dest='num_samples', type=int,
                         help='Number of samples to generate while testing')
@@ -162,8 +163,18 @@ def main():
     parser.add_argument('--plot_every_n', type=int, default=500,
                         help='Add plots every n samples')
 
+    parser.add_argument('--plot_heatmap', action='store_true', help='Whether to plot heatmap.')
+
     args = parser.parse_args()
 
+    # Setup the output directory
+    experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
+    output_dir = os.path.join(args.output_dir, experiment_name)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # List of files to be read
     with open(args.fcs_file, 'r') as f:
         fcs_files_of_interest = json.load(f)
 
@@ -173,12 +184,14 @@ def main():
     inhibitor_used = fcs_files_of_interest[0].split('_')[0]
     inhibitor_strength_used = fcs_files_of_interest[0].split('.')[0][-3:]
 
-    # Setup the output directory
-    experiment_name = dt.now().strftime('%d-%m_%H-%M-%S')
-    output_dir = os.path.join(args.output_dir, experiment_name)
+    fcs_savefile = os.path.join(output_dir, 'fcs.csv')
+    markers_savefile = os.path.join(output_dir, 'markers.csv')
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # Saving list of files and markers to output directory
+    with open(fcs_savefile, 'w') as f:
+        f.write(json.dumps(fcs_files_of_interest))
+    with open(markers_savefile, 'w') as f:
+        f.write(json.dumps(markers_of_interest))
 
     # Build logger
     cellgan_logger = build_logger(
@@ -194,9 +207,6 @@ def main():
     training_labels = list(
     )  # These are not just for training, just for checking later
     celltype_added = 0
-
-    # TODO: Replace this with .pkl file
-    # TODO: Number of test samples == Number of training samples. Is that okay?
 
     for file in fcs_files_of_interest:
 
@@ -337,8 +347,6 @@ def main():
 
     }
 
-    model_path = os.path.join(output_dir, 'model.ckpt')
-
     # Write hparams to text file (for reproducibility later)
     cellgan_logger.info('Saving hyperparameters...')
     write_hparams_to_file(out_dir=output_dir, hparams=model_hparams)
@@ -365,8 +373,8 @@ def main():
     pca = pca.fit(training_data)
 
     # Fit UMAP object
-    um = umap.UMAP()
-    um = um.fit(training_data)
+    um1 = umap.UMAP()
+    um1 = um1.fit(training_data)
 
     with tf.Session() as sess:
 
@@ -448,7 +456,6 @@ def main():
                 # Iteration number and losses
                 cellgan_logger.info(
                     "We are at iteration: {}".format(iteration + 1))
-                cellgan_logger.info("Subset size used: {}".format(subset_size))
                 cellgan_logger.info("Discriminator Loss: {}".format(d_loss))
                 cellgan_logger.info("Generator Loss: {}".format(g_loss))
                 cellgan_logger.info(
@@ -481,7 +488,7 @@ def main():
                 real_samples, indices = generate_subset(
                     inputs=training_data,
                     num_cells_per_input=num_samples,
-                    weights=None,  #Should I add weights differently?
+                    weights=None,
                     batch_size=1,
                     return_indices=True)
                 real_samples = real_samples.reshape(num_samples,
@@ -494,6 +501,9 @@ def main():
                     assign_expert_to_subpopulation(real_data=real_samples, real_labels=real_sample_subs,
                                                    fake_data=fake_samples, expert_labels=fake_sample_experts,
                                                    num_experts=num_experts, num_subpopulations=num_subpopulations)
+
+                with open(os.path.join(output_dir, str(iteration+1), 'expert_assignment.csv')) as f:
+                    f.write(json.dumps(expert_assignments))
 
                 # Compute learnt subpopulation weights
                 learnt_subpopulation_weights = \
@@ -552,9 +562,9 @@ def main():
 
                 # UMAP plot
 
-                cellgan_logger.info("Adding UMAP plots")
+                cellgan_logger.info("Adding UMAP plots.")
                 plot_umap(
-                    out_dir=output_dir, umap_obj=um,
+                    out_dir=output_dir, umap_obj=um1,
                     real_subset=real_samples,
                     fake_subset=fake_samples,
                     real_subset_labels=real_sample_subs,
@@ -564,20 +574,35 @@ def main():
                     iteration=iteration,
                     logger=cellgan_logger,
                     zero_sub=True)
+
+                # Umap on fake data
+                um2 = umap.UMAP(n_neighbors=5, min_dist=0.3, metric='correlation')
+                um2.fit(fake_samples)
+                transformed_real = um2.transform(real_samples)
+
+                f = plt.figure(figsize=(20, 20))
+                plt.scatter(transformed_real[:, 0], transformed_real[:, 1], c=real_sample_subs, label='Real-Data')
+                plt.xlabel('UM1')
+                plt.ylabel('UM2')
+                plt.legend()
+                f.tight_layout()
+                plt.savefig(output_dir, str(iteration+1), "input_space_clustering.pdf")
+
                 cellgan_logger.info("UMAP plots added. \n")
 
                 # Plotting the heatmap of gating weights
-                cellgan_logger.info("Adding Heatmap...")
-
-                plot_heatmap(out_dir=output_dir, logits=logits, fake_subset_labels=fake_sample_experts)
-
-                cellgan_logger.info("Heatmap added")
+                if args.plot_heatmap:
+                    cellgan_logger.info("Adding Heatmap...")
+                    plot_heatmap(out_dir=output_dir, iteration=iteration,
+                                 logits=logits, fake_subset_labels=fake_sample_experts)
+                    cellgan_logger.info("Heatmap added")
 
                 # Save the model
                 cellgan_logger.info("Saving the model...")
                 saver = tf.train.Saver()
+                model_path = os.path.join(output_dir, str(iteration+1), 'model.ckpt')
                 save_path = saver.save(sess, model_path)
-                cellgan_logger.info("Model saved at {} \n".format(save_path))
+                cellgan_logger.info("Model saved.")
 
                 cellgan_logger.info(
                     "########################################## \n")
