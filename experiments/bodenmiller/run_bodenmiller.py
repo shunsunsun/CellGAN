@@ -583,7 +583,7 @@ def main():
                 plt.ylabel('UM2')
                 plt.legend()
                 f.tight_layout()
-                plt.savefig(output_dir, str(iteration+1), "input_space_clustering.pdf")
+                plt.savefig(os.path.join(output_dir, str(iteration+1), "input_space_clustering.pdf"))
 
                 cellgan_logger.info("UMAP plots added. \n")
 
