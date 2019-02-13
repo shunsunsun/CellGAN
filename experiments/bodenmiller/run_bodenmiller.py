@@ -572,7 +572,7 @@ def main():
                     logger=cellgan_logger,
                     zero_sub=True)
 
-                with open(os.path.join(output_dir, str(iteration+1), 'expert_assignment.csv')) as f:
+                with open(os.path.join(output_dir, str(iteration+1), 'expert_assignment.csv'), 'w') as f:
                     f.write(json.dumps(expert_assignments))
 
                 # Umap on fake data
