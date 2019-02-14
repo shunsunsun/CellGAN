@@ -11,8 +11,8 @@ import tensorflow as tf
 from sklearn.decomposition import PCA
 import umap
 
-from cellgan.lib.preprocessing import extract_marker_indices, read_fcs_data
-from cellgan.lib.utils import f_trans, get_filters, get_num_pooled, write_hparams_to_file
+from cellgan.lib.data_utils import load_fcs
+from cellgan.lib.utils import get_filters, get_num_pooled, write_hparams_to_file
 from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights, build_logger
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.lib.model import CellGan
@@ -23,7 +23,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 def main():
-
     parser = argparse.ArgumentParser()
 
     # IO parameters
@@ -151,26 +150,22 @@ def main():
                         help='Add plots every n samples')
 
     parser.add_argument('--plot_heatmap', action='store_true', help='Whether to plot heatmap.')
-
     args = parser.parse_args()
 
     # Setup the output directory
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
     output_dir = os.path.join(args.output_dir, experiment_name)
-
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # List of files to be read
     with open(args.fcs_file, 'r') as f:
         fcs_files_of_interest = json.load(f)
-
     with open(args.marker_file, 'r') as f:
         markers_of_interest = json.load(f)
 
     inhibitor_used = fcs_files_of_interest[0].split('_')[0]
     inhibitor_strength_used = fcs_files_of_interest[0].split('.')[0][-3:]
-
     fcs_savefile = os.path.join(output_dir, 'fcs.csv')
     markers_savefile = os.path.join(output_dir, 'markers.csv')
 
@@ -185,57 +180,25 @@ def main():
         out_dir=output_dir, logging_format='%(message)s', level=logging.INFO)
 
     # Data Loading Steps
-    # ------------------
-
     cellgan_logger.info('Starting to load and process the .fcs files...')
     start_time = time.time()
 
-    training_data = list()
-    training_labels = list(
-    )  # These are not just for training, just for checking later
-    celltype_added = 0
-
-    for file in fcs_files_of_interest:
-
-        file_path = os.path.join(args.input_dir, file.strip())
-        fcs_data = read_fcs_data(file_path=file_path)
-
-        try:
-            marker_indices = extract_marker_indices(
-                fcs_data=fcs_data, markers_of_interest=markers_of_interest)
-            num_cells_in_file = fcs_data.data.shape[0]
-
-            if num_cells_in_file >= args.subpopulation_limit:
-
-                processed_data = np.squeeze(fcs_data.data[:, marker_indices])
-                processed_data = f_trans(processed_data, c=args.cofactor)
-
-                training_labels.append([celltype_added] * num_cells_in_file)
-                celltype_added += 1
-
-                training_data.append(processed_data)
-                cellgan_logger.info(
-                    'File {} loaded and processed'.format(file))
-                cellgan_logger.info('File {} contains {} cells \n'.format(
-                    file, num_cells_in_file))
-
-            else:
-                continue
-
-        except AttributeError:
-            pass
+    training_data, training_labels = load_fcs(
+        fcs_files=fcs_files_of_interest,
+        markers=markers_of_interest,
+        args=args,
+        logger=cellgan_logger
+    )
+    training_data = np.vstack(training_data)
+    training_labels = np.concatenate(training_labels)
 
     cellgan_logger.info("Loading and processing completed.")
     cellgan_logger.info(
         'TIMING: File loading and processing took {} seconds \n'.format(
             datetime.timedelta(seconds=time.time() - start_time)))
 
-    training_data = np.vstack(training_data)
-    training_labels = np.concatenate(training_labels)
-
     # Actual subpopulation weights
-    weights_subpopulations = compute_frequency(
-        labels=training_labels, weighted=True)
+    weights_subpopulations = compute_frequency(labels=training_labels, weighted=True)
 
     # Sampling filters for CellCnn Ensemble
     cellgan_logger.info("Sampling filters for the CellCnn Ensemble...")
@@ -364,7 +327,6 @@ def main():
     um1 = um1.fit(training_data)
 
     with tf.Session() as sess:
-
         sess.run(tf.global_variables_initializer())
 
         for iteration in range(args.num_iterations):
@@ -378,7 +340,6 @@ def main():
             model.set_train(True)
 
             for _ in range(args.num_critic):
-
                 if args.subset_sample == 'outlier':
                     real_batch, indices_batch = \
                         generate_subset(inputs=training_data, num_cells_per_input=args.num_cells_per_input,
@@ -400,18 +361,14 @@ def main():
                     num_cells_per_input=args.num_cells_per_input)
 
                 if args.type_gan == 'wgan':
-
                     fetches = [model.d_solver, model.d_loss, model.clip_D]
                     feed_dict = {model.Z: noise_batch, model.X: real_batch}
-
                     _, d_loss, _ = sess.run(
                         fetches=fetches, feed_dict=feed_dict)
 
                 elif args.type_gan == 'normal':
-
                     fetches = [model.d_solver, model.d_loss]
                     feed_dict = {model.Z: noise_batch, model.X: real_batch}
-
                     _, d_loss = sess.run(fetches=fetches, feed_dict=feed_dict)
 
                 else:
@@ -434,7 +391,6 @@ def main():
             generator_loss.append(g_loss)
 
             if iteration % args.plot_every_n == 0:
-
                 model.set_train(False)
 
                 frequency_sampled_batch = compute_frequency(
@@ -464,11 +420,8 @@ def main():
                 fetches = [model.g_sample, model.generator.gates, model.generator.logits]
                 feed_dict = {model.Z: noise_sample}
 
-                fake_samples, gates, logits = sess.run(
-                    fetches=fetches, feed_dict=feed_dict)
-                fake_samples = fake_samples.reshape(num_samples,
-                                                    len(markers_of_interest))
-
+                fake_samples, gates, logits = sess.run(fetches=fetches, feed_dict=feed_dict)
+                fake_samples = fake_samples.reshape(num_samples, len(markers_of_interest))
                 fake_sample_experts = np.argmax(gates, axis=1)
 
                 # Sample real data for testing
@@ -478,8 +431,7 @@ def main():
                     weights=None,
                     batch_size=1,
                     return_indices=True)
-                real_samples = real_samples.reshape(num_samples,
-                                                    len(markers_of_interest))
+                real_samples = real_samples.reshape(num_samples, len(markers_of_interest))
                 indices = np.reshape(indices, real_samples.shape[0])
                 real_sample_subs = training_labels[indices]
 
@@ -594,5 +546,4 @@ def main():
 
 
 if __name__ == '__main__':
-
     main()

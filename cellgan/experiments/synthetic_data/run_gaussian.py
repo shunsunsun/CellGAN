@@ -24,7 +24,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 def main():
-
     parser = argparse.ArgumentParser()
 
     # IO parameters
@@ -145,7 +144,6 @@ def main():
 
     parser.add_argument('--plot_every_n', type=int, default=500,
                         help='Add plots every n samples')
-
     args = parser.parse_args()
 
     num_subpopulations = args.num_subpopulations
@@ -157,13 +155,11 @@ def main():
 
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
     output_dir = os.path.join(args.output_dir, experiment_name)
-
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # Build logger
-    cellgan_logger = build_logger(
-        out_dir=output_dir, logging_format='%(message)s', level=logging.INFO)
+    cellgan_logger = build_logger(out_dir=output_dir, logging_format='%(message)s', level=logging.INFO)
 
     # Generate Gaussian training set
     cellgan_logger.info('Generating gaussian training set...')
@@ -176,14 +172,11 @@ def main():
     )
 
     start_time = time.time()
-
     cellgan_logger.info(
         'TIMING: File loading and processing took {} seconds \n'.format(
             datetime.timedelta(seconds=time.time() - start_time)))
 
     # TODO: Add options for means and variance in the build_gaussian_training_set
-
-    # outlier_scores = compute_outlier_weights(inputs=training_data, method='q_sp')
 
     # Sampling filters for CellCnn Ensemble
     cellgan_logger.info("Sampling filters for the CellCnn Ensemble...")
@@ -309,11 +302,9 @@ def main():
     um = um.fit(training_data)
 
     with tf.Session() as sess:
-
         sess.run(tf.global_variables_initializer())
 
         for iteration in range(args.num_iterations):
-
             if args.subset_sample == 'outlier':
                 subset_size = np.random.randint(low=20, high=50)
                 outlier_scores = compute_outlier_weights(
@@ -323,7 +314,6 @@ def main():
             model.set_train(True)
 
             for _ in range(args.num_critic):
-
                 if args.subset_sample == 'outlier':
                     real_batch, indices_batch = \
                         generate_subset(inputs=training_data, num_cells_per_input=args.num_cells_per_input,
@@ -345,18 +335,14 @@ def main():
                     num_cells_per_input=args.num_cells_per_input)
 
                 if args.type_gan == 'wgan':
-
                     fetches = [model.d_solver, model.d_loss, model.clip_D]
                     feed_dict = {model.Z: noise_batch, model.X: real_batch}
-
                     _, d_loss, _ = sess.run(
                         fetches=fetches, feed_dict=feed_dict)
 
                 elif args.type_gan == 'normal':
-
                     fetches = [model.d_solver, model.d_loss]
                     feed_dict = {model.Z: noise_batch, model.X: real_batch}
-
                     _, d_loss = sess.run(fetches=fetches, feed_dict=feed_dict)
 
                 else:
@@ -404,14 +390,11 @@ def main():
                     batch_size=1,
                     num_cells_per_input=num_samples,
                     noise_size=args.noise_size)
-
                 fetches = [model.g_sample, model.generator.gates, model.generator.logits]
                 feed_dict = {model.Z: noise_sample}
 
-                fake_samples, gates, logits = sess.run(
-                    fetches=fetches, feed_dict=feed_dict)
+                fake_samples, gates, logits = sess.run(fetches=fetches, feed_dict=feed_dict)
                 fake_samples = fake_samples.reshape(num_samples, num_markers)
-
                 fake_sample_experts = np.argmax(gates, axis=1)
 
                 # Sample real data for testing

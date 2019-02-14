@@ -11,9 +11,8 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
 import umap
 
-from cellgan.lib.preprocessing import extract_marker_indices, read_fcs_data
-from cellgan.lib.utils import write_hparams_to_file, f_trans
-from cellgan.lib.utils import build_logger, generate_subset
+from cellgan.lib.data_utils import load_fcs
+from cellgan.lib.utils import write_hparams_to_file, build_logger, generate_subset
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.lib.plotting import plot_marker_distributions, plot_pca, plot_umap
 from cellgan.experiments.baselines.GMM.defaults import *
@@ -22,7 +21,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 def main():
-
     parser = argparse.ArgumentParser()
 
     # IO parameters
@@ -39,7 +37,6 @@ def main():
                         help='Directory where output will be generated.')
 
     # data processing
-
     parser.add_argument('--sub_limit', dest='subpopulation_limit', type=int, default=30,
                         help='Minimum number of cells to be called a subpopulation')
 
@@ -47,7 +44,6 @@ def main():
                         help='cofactor for the arcsinh transformation')
 
     # GMM Specific
-
     parser.add_argument('-e', '--experts', dest='num_experts', type=int,
                         help='Number of experts in the generator')
 
@@ -71,10 +67,8 @@ def main():
                         choices=['kmeans', 'random'], help='Initializing GMM parameters')
 
     # Testing specific
-
     parser.add_argument('--num_samples', dest='num_samples', type=int,
                         help='Number of samples to generate while testing')
-    
     args = parser.parse_args()
     
     with open(args.fcs_file, 'r') as f:
@@ -89,7 +83,6 @@ def main():
     # Setup the output directory
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
     output_dir = os.path.join(args.output_dir, experiment_name)
-
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -97,64 +90,33 @@ def main():
     gmm_logger = build_logger(
         out_dir=output_dir, logging_format='%(message)s', level=logging.INFO)
 
-    # Data Loading Steps
-    # ------------------
-
+    # Data Loading
     gmm_logger.info('Starting to load and process the .fcs files...')
     start_time = time.time()
 
-    training_data = list()
-    training_labels = list(
-    )  # These are not just for training, just for checking later
-    celltype_added = 0
-
-    # TODO: Replace this with .pkl file
-    # TODO: Number of test samples == Number of training samples. Is that okay?
-
-    for file in fcs_files_of_interest:
-
-        file_path = os.path.join(args.input_dir, file.strip())
-        fcs_data = read_fcs_data(file_path=file_path)
-
-        try:
-            marker_indices = extract_marker_indices(
-                fcs_data=fcs_data, markers_of_interest=markers_of_interest)
-            num_cells_in_file = fcs_data.data.shape[0]
-
-            if num_cells_in_file >= args.subpopulation_limit:
-
-                processed_data = np.squeeze(fcs_data.data[:, marker_indices])
-                processed_data = f_trans(processed_data, c=args.cofactor)
-
-                training_labels.append([celltype_added] * num_cells_in_file)
-                celltype_added += 1
-
-                training_data.append(processed_data)
-                gmm_logger.info(
-                    'File {} loaded and processed'.format(file))
-                gmm_logger.info('File {} contains {} cells \n'.format(
-                    file, num_cells_in_file))
-
-            else:
-                continue
-
-        except AttributeError:
-            pass
+    training_data, training_labels = load_fcs(
+        fcs_files=fcs_files_of_interest,
+        markers=markers_of_interest,
+        args=args,
+        logger=gmm_logger
+    )
+    training_data = np.vstack(training_data)
+    training_labels = np.concatenate(training_labels)
 
     gmm_logger.info("Loading and processing completed.")
     gmm_logger.info(
         'TIMING: File loading and processing took {} seconds \n'.format(
             datetime.timedelta(seconds=time.time() - start_time)))
 
-    training_data = np.vstack(training_data)
-    training_labels = np.concatenate(training_labels)
+    gmm_logger.info("Loading and processing completed.")
+    gmm_logger.info(
+        'TIMING: File loading and processing took {} seconds \n'.format(
+            datetime.timedelta(seconds=time.time() - start_time)))
 
     # Actual subpopulation weights
-    weights_subpopulations = compute_frequency(
-        labels=training_labels, weighted=True)
+    weights_subpopulations = compute_frequency(labels=training_labels, weighted=True)
 
     num_subpopulations = len(np.unique(training_labels))
-
     if not args.num_experts or args.num_experts <= num_subpopulations:
         num_experts = num_subpopulations
     else:
@@ -166,7 +128,6 @@ def main():
         num_samples = args.num_samples
 
     # Build GMM
-
     gmm_logger.info('Building GMM...')
 
     model = GaussianMixture(
@@ -212,13 +173,10 @@ def main():
     um = um.fit(training_data)
 
     # Train the GMM
-
     model.fit(X=training_data, y=training_labels)
 
     # Test Model and Generate Plots
-
     fake_samples, fake_sample_experts = model.sample(num_samples)
-
     fake_samples = fake_samples.reshape(num_samples,
                                         len(markers_of_interest))
 
@@ -306,24 +264,4 @@ def main():
 
 
 if __name__ == '__main__':
-
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

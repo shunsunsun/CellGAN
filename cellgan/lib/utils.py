@@ -43,9 +43,7 @@ def get_filters(num_cell_cnns, low, high):
     :param high: int, maximum permissible number of filters for a CellCnn
     :return: filters, a numpy array of size num_cell_cnns
     """
-
     filters = np.random.randint(low=low, high=high, size=num_cell_cnns)
-
     return filters
 
 
@@ -57,10 +55,8 @@ def get_num_pooled(num_cell_cnns, num_cells_per_input):
     :param num_cells_per_input: int, number of cells per multi-cell input
     :return: num_pooled, a numpy array of size num_cell_cnns
     """
-
     num_pooled = np.random.randint(
         low=1, high=num_cells_per_input, size=num_cell_cnns)
-
     return num_pooled
 
 
@@ -72,12 +68,10 @@ def sample_z(batch_size, num_cells_per_input, noise_size):
     :param noise_size: int, noise dimension 
     :return: noise, a numpy array of shape (batch_size, num_cells, noise_size)
     """
-
     noise = np.random.multivariate_normal(
         mean=np.zeros(shape=noise_size),
         cov=np.eye(N=noise_size),
         size=(batch_size, num_cells_per_input))
-
     return noise
 
 
@@ -98,7 +92,6 @@ def build_gaussian_training_set(num_subpopulations,
     :param shuffle: bool, default false, whether to shuffle the training set
     :return: data, y_sub_populations
     """
-
     means = list()
     sd = list()
 
@@ -140,7 +133,6 @@ def get_batches(inputs,
     :param weights: list of float, whether there is a preference for some cells
     :return:
     """
-
     batches = [
         generate_subset(
             inputs=inputs,
@@ -166,7 +158,6 @@ def generate_subset(inputs,
     :param return_indices: bool, whether to return subset indices or not
     :return:
     """
-
     num_cells_total = inputs.shape[0]
 
     if weights is not None:
@@ -175,7 +166,6 @@ def generate_subset(inputs,
             size=batch_size * num_cells_per_input,
             replace=True,
             p=weights)
-
     else:
         indices = np.random.choice(
             num_cells_total,
@@ -187,7 +177,6 @@ def generate_subset(inputs,
 
     if return_indices:
         return subset, indices
-
     else:
         return subset
 
@@ -203,25 +192,21 @@ def compute_outlier_weights(inputs,
     :param subset_size: Size of the randomly sampled subset to compute outliers
     :return: outlier_weights
     """
-
     if method != 'q_sp':
         raise NotImplementedError(
             'Other outlier methods are not implemented currently')
-
     else:
         outlier_weights = q_sp(inputs, metric=metric, subset_size=subset_size)
-
         return outlier_weights
 
 
 def q_sp(inputs, subset_size=DEFAULT_SUBSET_SIZE, metric='l2'):
-    """q_sp method for computing outlier weights
+    """q_sp method for computing outlier weights.
     :param inputs: Input dataset
     :param subset_size: Size of the randomly sampled subset to compute outliers
     :param metric: Which distance metric to use (default l2)
     :return outlier_weights 
     """
-
     if subset_size < inputs.shape[0]:
         subset_indices = np.random.choice(
             inputs.shape[0], size=subset_size, replace=False)
@@ -241,87 +226,74 @@ def compute_l2(x, y):
     """Vectorized implementation of l2-norm"""
 
     dists = np.zeros((x.shape[0], y.shape[0]))
-
     x_squared = np.sum(np.square(x), axis=1)
     y_squared = np.sum(np.square(y), axis=1)
 
     dists += x_squared[:, np.newaxis]
     dists += y_squared[np.newaxis, :]
     x_dot_y = np.dot(x, y.T)
-
     assert dists.shape == x_dot_y.shape
-
     dists -= 2 * x_dot_y
 
     return dists
 
 
 def compute_l1(x, y):
-    """Faster implementation of l1-norm"""
-
+    """Faster implementation of l1-norm."""
     dists = np.zeros((x.shape[0], y.shape[0]))
 
     for i in range(x.shape[0]):
         sample = x[i, :]
         sample_dists = np.abs(sample - y)
         sample_dists = np.sum(sample_dists, axis=1)
-
         dists[i] = sample_dists
 
     return dists
 
 
 def compute_closest(x, y, metric='l2'):
-    """Finds smallest distance to y for x (x is many data points)
+    """Finds smallest distance to y for x (x is many data points).
     :param x: data point for which we want to compute the closest distance to
     :param y: subset in which we wish to find smallest distance to (Matrix)
     :param metric: Which distance metric to use (default l2)
     :return: smallest_dist
     """
-
     if metric == 'l2':
-
         dists = compute_l2(x, y)
         smallest_dist = np.min(dists, axis=1)
         assert len(smallest_dist) == x.shape[0]
 
     elif metric == 'l1':
-
         dists = compute_l1(x, y)
         smallest_dist = np.min(dists, axis=1)
         assert len(smallest_dist) == x.shape[0]
 
     else:
         smallest_dist = np.zeros(len(x))
-
     return smallest_dist
 
 
 def write_hparams_to_file(out_dir, hparams):
     """
-    Writes hyperparameters used in experiment to specified output directory
+    Writes hyperparameters used in experiment to specified output directory.
 
     :param out_dir: str, directory name
     :param hparams: dictionary, keys as hyperparameter names
     :return: no returns
     """
-
     filename = os.path.join(out_dir, 'Hparams.txt')
-
     with open(filename, 'w') as f:
-
         f.write(json.dumps(hparams))
 
 
 def build_logger(out_dir, level=logging.INFO, logging_format='%(message)s'):
     """
-    Setup the logger
+    Setup the logger.
     :param out_dir: Output directory
     :param level: Logger level (One of INFO, DEBUG)
     :param logging_format: What format to use for logging messages
     :return: logger with properties defined above
     """
-
     log_file_name = os.path.join(out_dir, 'Output.log')
     logger = logging.getLogger('CellGan')
 
@@ -342,45 +314,37 @@ def compute_frequency(labels, weighted=False):
     :param weighted: bool, whether to compute weights instead of counts
     :return: label_counts (either as weights or as counts)
     """
-
     labels = labels.flatten()
     counts = Counter(labels)
 
     if not weighted:
-
         # Counts for different labels in sorted order
         counts = dict(sorted(counts.items(), key=lambda x: x[0]))
         label_counts = {k+1: v for k, v in counts.items()}
         return label_counts
 
     else:
-
         # Return the frequencies of different labels
         label_sum = np.sum(list(counts.values()))
         label_counts = dict()
         for key in counts:
             label_counts[key+1] = counts[key] / label_sum
             label_counts[key+1] = label_counts[key+1].round(4)
-
         label_counts = dict(sorted(label_counts.items(), key=lambda x: x[0]))
-
         return label_counts
 
 
 def compute_wasserstein(real_data, real_labels, fake_data, expert_labels,
                         num_subpopulations, num_experts):
-
+    """Computes wasserstein distance between fake and real data."""
     wass_sums = list()
-
     for expert in range(num_experts):
-
         wass_sum_per_expert = list()
         expert_indices = np.where(expert_labels == expert)[0]
 
         if len(expert_indices) == 0:
             wass_sums.append([0] * num_subpopulations)  # TODO: What to add here?
             continue
-
         else:
             fake_data_by_expert = fake_data[expert_indices, :]
 
@@ -390,7 +354,6 @@ def compute_wasserstein(real_data, real_labels, fake_data, expert_labels,
                 if len(subs_indices) == 0:
                     wass_sum_per_expert.append(np.inf)
                     continue
-
                 else:
                     real_data_by_sub = real_data[subs_indices]
                     wass_sum = np.sum([
@@ -398,9 +361,7 @@ def compute_wasserstein(real_data, real_labels, fake_data, expert_labels,
                                              fake_data_by_expert[:, marker])
                         for marker in range(real_data.shape[-1])
                     ])
-
                     wass_sum_per_expert.append(wass_sum)
-
         wass_sums.append(wass_sum_per_expert)
 
     wass_sums = np.asarray(wass_sums)
@@ -422,28 +383,22 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels,
     :param num_experts: Number of experts
     :return: ks_sums
     """
-
     ks_sums = list()
-
     for expert in range(num_experts):
-
         ks_sum_per_expert = list()
         expert_indices = np.where(expert_labels == expert)[0]
 
         if len(expert_indices) == 0:
             ks_sums.append([0] * num_subpopulations) #TODO: What to add here?
             continue
-
         else:
             fake_data_by_expert = fake_data[expert_indices, :]
-
             for sub in range(num_subpopulations):
                 subs_indices = np.where(real_labels == sub)[0]
 
                 if len(subs_indices) == 0:
                     ks_sum_per_expert.append(0)
                     continue
-
                 else:
                     real_data_by_sub = real_data[subs_indices]
                     ks_sum = np.sum([
@@ -451,9 +406,7 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels,
                                  fake_data_by_expert[:, marker])[0]
                         for marker in range(real_data.shape[-1])
                     ])
-
                     ks_sum_per_expert.append(ks_sum)
-
         ks_sums.append(ks_sum_per_expert)
 
     ks_sums = np.asarray(ks_sums)
@@ -463,18 +416,15 @@ def compute_ks(real_data, real_labels, fake_data, expert_labels,
 
 
 def compute_mmd(x, y, kernel='rbf', sigma=0.01, biased=True):
-
+    """ Computes MMD score based on given kernel."""
     if kernel == 'rbf':
-
         gamma = 1 / (2 * (sigma ** 2))
-
         k_xx = np.exp(-gamma * compute_l2(x, x))
         k_xy = np.exp(-gamma * compute_l2(x, y))
         k_yy = np.exp(-gamma * compute_l2(y, y))
 
         if biased:
             mmd = k_xx.mean() + k_yy.mean() - 2 * k_xy.mean()
-
         else:
             m = k_xx.shape[0]
             n = k_yy.shape[0]
@@ -482,7 +432,6 @@ def compute_mmd(x, y, kernel='rbf', sigma=0.01, biased=True):
             mmd = ((k_xx.sum() - m) / (m * (m - 1))
                    + (k_yy.sum() - n) / (n * (n - 1))
                    - 2 * k_xy.mean())
-
     else:
         raise NotImplementedError('No other kernels are supported currently')
 
@@ -502,7 +451,6 @@ def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
     :param num_experts: Number of experts
     :return: expert_assignments, an array of size num_experts
     """
-
     ks_sums = compute_ks(
         real_data=real_data,
         real_labels=real_labels,
@@ -510,7 +458,6 @@ def assign_expert_to_subpopulation(real_data, real_labels, fake_data,
         expert_labels=expert_labels,
         num_subpopulations=num_subpopulations,
         num_experts=num_experts)
-
     expert_assignments = np.argmin(ks_sums, axis=1)
 
     return expert_assignments
@@ -525,7 +472,6 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
     :param num_subpopulations: Number of subpopulations in the data
     :return: learnt_subpopulation_weights
     """
-
     expert_weights = compute_frequency(labels=expert_labels, weighted=True)
     learnt_subpopulation_weights = {
         subpopulation+1: 0.0
@@ -533,7 +479,6 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
     }
 
     for subpopulation in range(num_subpopulations):
-
         if subpopulation not in expert_assignments:
             continue
         else:
@@ -610,7 +555,6 @@ def compute_f_measure(y_true, y_pred):
     :param y_pred:
     :return: double, f-measure
     """
-
     y_true_unique = np.unique(y_true)
     y_pred_unique = np.unique(y_pred)
 

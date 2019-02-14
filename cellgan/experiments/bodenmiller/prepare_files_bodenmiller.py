@@ -7,7 +7,6 @@ from cellgan.experiments.bodenmiller.defaults import *
 
 
 def prepare_files():
-
     parser = ArgumentParser()
 
     parser.add_argument('--in_dir', dest='input_dir', default=DATA_DIR)
@@ -20,7 +19,6 @@ def prepare_files():
 
     parser.add_argument('--markers', dest='markers_of_interest', default=DEFAULT_MARKERS,
                         type=list, help='Which markers to be measured.')
-
     args = parser.parse_args()
 
     input_files = os.listdir(os.path.join(args.input_dir, args.inhibitor_used))
@@ -33,7 +31,6 @@ def prepare_files():
 
     fcs_save_file = args.inhibitor_used + '_fcs.csv'
     markers_save_file = 'markers.csv'
-
     fcs_save_path = os.path.join(args.input_dir, args.inhibitor_used, fcs_save_file)
     markers_save_path = os.path.join(args.input_dir, args.inhibitor_used, markers_save_file)
 
@@ -45,5 +42,4 @@ def prepare_files():
 
 
 if __name__ == '__main__':
-
     prepare_files()

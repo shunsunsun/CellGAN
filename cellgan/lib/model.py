@@ -75,34 +75,12 @@ class CellGan(object):
 
     """
 
-    def __init__(self,
-                 noise_size,
-                 moe_sizes,
-                 batch_size,
-                 num_markers=10,
-                 num_experts=3,
-                 g_filters=10,
-                 d_filters=[10],
-                 d_pooled=[3],
-                 coeff_l1=0,
-                 coeff_l2=1e-4,
-                 coeff_act=0,
-                 dropout_prob=0.5,
-                 d_lr=2e-4,
-                 g_lr=2e-4,
-                 num_top=1,
-                 noisy_gating=True,
-                 noise_eps=1e-2,
-                 beta_1=0.9,
-                 beta_2=0.999,
-                 reg_lambda=10,
-                 clip_val=0.01,
-                 train=False,
-                 init_method='xavier',
-                 type_gan='normal',
+    def __init__(self, noise_size, moe_sizes, batch_size, num_markers=10, num_experts=3,
+                 g_filters=10, d_filters=[10], d_pooled=[3], coeff_l1=0, coeff_l2=1e-4,
+                 coeff_act=0, dropout_prob=0.5, d_lr=2e-4, g_lr=2e-4, num_top=1,
+                 noisy_gating=True, noise_eps=1e-2, beta_1=0.9, beta_2=0.999, reg_lambda=10,
+                 clip_val=0.01, train=False, init_method='xavier', type_gan='normal',
                  load_balancing=False):
-
-        # Initialize the generator and discriminator
 
         self.generator = CellGanGen(
             moe_sizes=moe_sizes,
@@ -122,8 +100,8 @@ class CellGan(object):
             d_pooled=d_pooled,
             init_method=init_method,
             dropout_prob=dropout_prob)
-        self.num_discriminators = len(d_filters)
 
+        self.num_discriminators = len(d_filters)
         self.noise_size = noise_size
         self.batch_size = batch_size
 
@@ -141,7 +119,6 @@ class CellGan(object):
             self.adam_optimizer['gen_learning_rate'] = g_lr
             self.adam_optimizer['beta_1'] = beta_1
             self.adam_optimizer['beta_2'] = beta_2
-
         else:
             self.rms_prop_optimizer = dict()
             self.rms_prop_optimizer['disc_learning_rate'] = d_lr
@@ -159,7 +136,6 @@ class CellGan(object):
         :param train: bool, whether in training or testing stage
         :return: no returns
         """
-
         self.hparams['train'] = train
 
     def _create_placeholders(self):
@@ -168,14 +144,12 @@ class CellGan(object):
         noise and real samples
 
         """
-
-        num_markers = self.generator.hparams['num_markers']
-
         self.Z = tf.placeholder(
             shape=[None, None, self.noise_size],
             dtype=tf.float32,
             name="input_noise")
 
+        num_markers = self.generator.hparams['num_markers']
         self.X = tf.placeholder(
             shape=[None, None, num_markers],
             dtype=tf.float32,
@@ -190,10 +164,8 @@ class CellGan(object):
                       generator parameters
         :return: output, a tensor of expected shape (batch_size, num_cells_per_input, num_markers)
         """
-
         output = self.generator.run(
             inputs=self.Z, train=self.hparams['train'], reuse=reuse)
-
         return output
 
     def _eval_disc(self, inputs, reuse):
@@ -204,7 +176,6 @@ class CellGan(object):
                       generator parameters
         :return: output, dictionary of tensors with discriminator scores for every cell
         """
-
         output = self.discriminator.run(inputs=inputs, reuse=reuse)
         return output
 
@@ -224,16 +195,13 @@ class CellGan(object):
 
         :return: no returns
         """
-
         self.g_sample = self._generate_sample()
         self.d_real = self._eval_disc(inputs=self.X, reuse=tf.AUTO_REUSE)
         self.d_fake = self._eval_disc(
             inputs=self.g_sample, reuse=tf.AUTO_REUSE)
 
         if self.hparams['type_gan'] == 'normal':
-
             self.d_loss_real = 0
-
             for i in self.d_real:
                 self.d_loss_real += tf.reduce_mean(
                     tf.nn.sigmoid_cross_entropy_with_logits(
@@ -244,7 +212,6 @@ class CellGan(object):
             self.g_loss_fake = 0
 
             for i in self.d_fake:
-
                 self.d_loss_fake = tf.reduce_mean(
                     tf.nn.sigmoid_cross_entropy_with_logits(
                         logits=self.d_fake[i],
@@ -259,13 +226,11 @@ class CellGan(object):
             self.g_loss = self.g_loss_fake
 
         elif self.hparams['type_gan'] == 'wgan':
-
             self.d_loss_fake = 0
             self.d_loss_real = 0
 
             for i in self.d_fake:
                 self.d_loss_fake += tf.reduce_mean(self.d_fake[i])
-
             for i in self.d_real:
                 self.d_loss_real += tf.reduce_mean(self.d_real[i])
 
@@ -277,41 +242,27 @@ class CellGan(object):
                 self.g_loss = -self.d_loss_fake
 
         elif self.hparams['type_gan'] == 'wgan-gp':
-
             self.d_loss_real = 0
             self.d_loss_fake = 0
 
-            epsilon = tf.random_uniform(
-                shape=[self.batch_size], minval=0, maxval=1)
-            self.x_hat = epsilon * tf.transpose(
-                self.X) + (1 - epsilon) * tf.transpose(self.g_sample)
+            epsilon = tf.random_uniform(shape=[self.batch_size], minval=0, maxval=1)
+            self.x_hat = epsilon * tf.transpose(self.X) + (1 - epsilon) * tf.transpose(self.g_sample)
             self.x_hat = tf.transpose(self.x_hat)
-
-            self.d_x_hat = self._eval_disc(
-                inputs=self.x_hat, reuse=tf.AUTO_REUSE)
-
+            self.d_x_hat = self._eval_disc(inputs=self.x_hat, reuse=tf.AUTO_REUSE)
         else:
             raise NotImplementedError(
                 'Loss for GAN of type {} is not implemented'.format(
                     self.hparams['type_gan']))
 
-        self.d_params = tf.get_collection(
-            key=tf.GraphKeys.GLOBAL_VARIABLES, scope="CellCnnEnsemble")
-
-        self.g_params = tf.get_collection(
-            key=tf.GraphKeys.GLOBAL_VARIABLES, scope="CellGanGen")
+        self.d_params = tf.get_collection(key=tf.GraphKeys.GLOBAL_VARIABLES, scope="CellCnnEnsemble")
+        self.g_params = tf.get_collection(key=tf.GraphKeys.GLOBAL_VARIABLES, scope="CellGanGen")
 
     def _solvers(self):
         """
         Optimizers used for minimizing GAN loss
-
         :return: no returns
         """
-
-        # WGAN formulation used RMS Prop optimizer
-
         if self.hparams['type_gan'] == 'wgan':
-
             d_opt = tf.train.RMSPropOptimizer(
                 learning_rate=self.rms_prop_optimizer['disc_learning_rate'])
             g_opt = tf.train.RMSPropOptimizer(
@@ -319,7 +270,6 @@ class CellGan(object):
 
             self.d_solver = d_opt.minimize(
                 loss=self.d_loss, var_list=self.d_params)
-
             self.g_solver = g_opt.minimize(
                 loss=self.g_loss, var_list=self.g_params)
 
@@ -328,7 +278,6 @@ class CellGan(object):
                 for p in self.d_params
             ]
 
-        # Use Adam Optimizer otherwise
         else:
             d_opt = tf.train.AdamOptimizer(
                 learning_rate=self.adam_optimizer['disc_learning_rate'],
@@ -341,9 +290,5 @@ class CellGan(object):
 
             self.d_solver = d_opt.minimize(
                 loss=self.d_loss, var_list=self.d_params)
-
             self.g_solver = g_opt.minimize(
                 loss=self.g_loss, var_list=self.g_params)
-
-
-# TODO: Add Shannon entropy to loss

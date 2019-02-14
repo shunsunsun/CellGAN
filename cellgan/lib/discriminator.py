@@ -38,10 +38,7 @@ class CellCnn(object):
 
     def __init__(self, num_filters, coeff_l1, coeff_l2, coeff_act, num_pooled,
                  dropout_prob, init_method, scope_name):
-
         self.scope_name = scope_name
-
-        # Discriminator Hyperparameters
         self.hparams = dict()
         self.hparams['num_filters'] = num_filters
         self.hparams['coeff_l1'] = coeff_l1
@@ -49,11 +46,9 @@ class CellCnn(object):
         self.hparams['coeff_act'] = coeff_act
         self.hparams['dropout_prob'] = dropout_prob
         self.hparams['num_pooled'] = num_pooled
-
         self.init = initializers[init_method]
 
     def run(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
-
         return self._cellcnn(inputs=inputs, reuse=reuse, print_shape=print_shape)
 
     def _cellcnn(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
@@ -66,20 +61,13 @@ class CellCnn(object):
         :param print_shape: bool, indicates whether to print the shapes of different components & layers
         :return: fake/real scores for inputs, tensor of shape (batch_size*num_pooled, 1)
         """
-
         with tf.variable_scope(self.scope_name, reuse=reuse):
-
-            # Get batch_size and num_cells_per_input for ease of reshape later
             batch_size = tf.shape(inputs)[0]
             num_cells_per_input = tf.shape(inputs)[1]
             num_markers = int(inputs.shape[-1])
 
-            # Input to the convolutional layer
-            conv1_input = tf.reshape(
-                inputs,
-                shape=[batch_size * num_cells_per_input, num_markers, 1])
+            conv1_input = tf.reshape(inputs, shape=[batch_size * num_cells_per_input, num_markers, 1])
 
-            # Output from Convolutional Layer 1
             # Expected shape: (batch_size*num_cells_per_input, 1, num_filters)
             d_conv1 = tf.layers.conv1d(
                 inputs=conv1_input,
@@ -89,34 +77,25 @@ class CellCnn(object):
                 activation=tf.nn.leaky_relu,
                 name='d_conv1',
             )
-
             num_filters = int(d_conv1.shape[-1])
 
-            # Reshaped output for downstream layers
             # Expected Shape: (batch_size, num_filters, num_cells_per_input]
-            reshaped_d_conv1 = tf.reshape(
-                d_conv1,
-                shape=[batch_size, num_filters, num_cells_per_input])
-
-            # Setting an appropriate value of number of cells to be pooled
+            reshaped_d_conv1 = tf.reshape(d_conv1, shape=[batch_size, num_filters, num_cells_per_input])
             if num_cells_per_input == 1:
                 k = 1
             else:
                 k = self.hparams['num_pooled']
 
-            # Pooling layer (Instead of filter dimension, we pool on cell dimension)
             # Expected Shape: (batch_size, num_filters, num_pooled)
             d_pooled1, indices = tf.nn.top_k(
                 input=reshaped_d_conv1, k=k, name='d_pooled1')
 
             num_pooled = int(d_pooled1.shape[-1])
 
-            # Reshaping pooling layer output
             # Expected Shape: (batch_size*num_pooled, num_filters)
             reshaped_d_pooled1 = tf.reshape(
                 d_pooled1, shape=[batch_size * num_pooled, num_filters])
 
-            # Dense Layer 1
             # Expected Shape: (batch_size*num_pooled, DEFAULT_HIDDEN_UNITS)
             d_dense1 = tf.layers.dense(
                 inputs=reshaped_d_pooled1,
@@ -124,19 +103,16 @@ class CellCnn(object):
                 name="d_dense1",
                 activation=tf.nn.leaky_relu)
 
-            # Dropout Layer 1
             # Expected Shape: (batch_size*num_pooled, DEFAULT_HIDDEN_UNITS)
             d_dropout1 = tf.layers.dropout(
                 inputs=d_dense1,
                 rate=self.hparams['dropout_prob'],
                 name="d_dropout1")
 
-            # Dense Layer 2
             # Expected Shape = (batch_size*num_pooled, 1)
             d_dense2 = tf.layers.dense(
                 inputs=d_dropout1, units=1, name='d_dense2', activation=None)
 
-            # For checking shapes
             if print_shape:
                 print()
                 print("Discriminator")

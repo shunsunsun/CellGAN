@@ -33,8 +33,6 @@ class CellCnnEnsemble(object):
 
     def __init__(self, d_filters, d_pooled, coeff_l1, coeff_l2, coeff_act,
                  dropout_prob, init_method):
-
-        # Add CellCnnEnsemble hyperparameters
         self.hparams = dict()
         self.hparams['d_filters'] = d_filters
         self.hparams['d_pooled'] = d_pooled
@@ -42,7 +40,6 @@ class CellCnnEnsemble(object):
         self.hparams['coeff_l2'] = coeff_l2
         self.hparams['coeff_act'] = coeff_act
         self.hparams['dropout_prob'] = dropout_prob
-
         self.inits = init_method
         self._initialize_ensemble()
 
@@ -50,13 +47,10 @@ class CellCnnEnsemble(object):
         """
         Initialize each CellCnn in the ensemble
         """
-
         self.CellCnns = dict()
 
         for i in range(len(self.hparams['d_filters'])):
-
             scope_name = "CellCnn_" + str(i + 1)
-
             self.CellCnns[i] = CellCnn(
                 num_filters=self.hparams['d_filters'][i],
                 num_pooled=self.hparams['d_pooled'][i],
@@ -68,7 +62,6 @@ class CellCnnEnsemble(object):
                 dropout_prob=self.hparams['dropout_prob'])
 
     def run(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
-
         return self._ensemble(inputs=inputs, reuse=reuse, print_shape=print_shape)
 
     def _ensemble(self, inputs, reuse=tf.AUTO_REUSE, print_shape=False):
@@ -82,13 +75,9 @@ class CellCnnEnsemble(object):
         :param print_shape: bool, indicates whether to print the shape for every CellCnn
         :return: fake/real scores for inputs, in a dictionary with CellCnn index as key.
         """
-
         self.outputs = dict()
-
         with tf.variable_scope("CellCnnEnsemble", reuse=reuse):
-
             for i in self.CellCnns:
-
                 self.outputs[i] = self.CellCnns[i].run(
                     inputs=inputs, reuse=reuse, print_shape=print_shape)
 
