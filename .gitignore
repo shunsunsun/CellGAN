@@ -1,0 +1,6 @@
+cellgan/lib/__pycache__/*
+cellgan/experiments/__pycache__/*
+misc/*
+download-scripts/*
+results/*
+.ipynb_checkpoints/*
