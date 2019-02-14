@@ -10,8 +10,6 @@ from scipy.stats import ks_2samp
 from scipy.stats import wasserstein_distance
 from sklearn.metrics import f1_score
 
-from cellgan.lib.model import CellGan
-
 xav_init = tf.contrib.layers.xavier_initializer
 normal_init = tf.truncated_normal_initializer
 zero_init = tf.zeros_initializer
@@ -560,6 +558,7 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
 
 def load_model(out_dir, session_obj):
     """Load CellGAN model """
+    from cellgan.lib.model import CellGan
 
     model_name = 'model.ckpt'
     hparams_file = os.path.join(out_dir, 'Hparams.txt')

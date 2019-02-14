@@ -17,7 +17,7 @@ from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.lib.model import CellGan
 from cellgan.lib.plotting import *
-from .defaults import *
+from cellgan.experiments.bodenmiller.defaults import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 

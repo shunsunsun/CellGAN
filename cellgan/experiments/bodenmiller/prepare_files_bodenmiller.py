@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 import json
 import re
-from .defaults import *
+from cellgan.experiments.bodenmiller.defaults import *
 
 
 def prepare_files():

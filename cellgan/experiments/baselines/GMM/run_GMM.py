@@ -16,7 +16,7 @@ from cellgan.lib.utils import write_hparams_to_file, f_trans
 from cellgan.lib.utils import build_logger, generate_subset
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.lib.plotting import plot_marker_distributions, plot_pca, plot_umap
-from .defaults import *
+from cellgan.experiments.baselines.GMM.defaults import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 

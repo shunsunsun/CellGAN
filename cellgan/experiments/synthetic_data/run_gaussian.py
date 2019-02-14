@@ -16,7 +16,7 @@ from cellgan.lib.utils import build_logger, build_gaussian_training_set
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.lib.model import CellGan
 from cellgan.lib.plotting import *
-from .defaults import *
+from cellgan.experiments.synthetic_data.defaults import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
