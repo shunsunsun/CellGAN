@@ -1,6 +1,19 @@
-cellgan/lib/__pycache__/*
-cellgan/experiments/__pycache__/*
-misc/*
-download-scripts/*
-results/*
-.ipynb_checkpoints/*
+# Python
+*__pycache__/
+*__pycache__/
+.ipynb_checkpoints/
+
+
+# IDEs
+.idea/
+.vscode/
+
+# R-related
+*.RData
+*.Rhistory
+
+# Folders
+results/
+data/
+
+
