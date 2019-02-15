@@ -14,11 +14,12 @@ from cellgan.lib.data_utils import load_fcs, get_fcs_filenames
 from cellgan.lib.utils import get_filters, get_num_pooled, write_hparams_to_file
 from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights, build_logger
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
-from cellgan.lib.model import CellGan
+from cellgan.model.model import CellGan
 from cellgan.lib.plotting import *
 from cellgan.experiments.bodenmiller.defaults import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 def main():
     parser = argparse.ArgumentParser()

@@ -14,7 +14,7 @@ from cellgan.lib.utils import get_filters, get_num_pooled, write_hparams_to_file
 from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights
 from cellgan.lib.utils import build_logger, build_gaussian_training_set
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
-from cellgan.lib.model import CellGan
+from cellgan.model.model import CellGan
 from cellgan.lib.plotting import *
 from cellgan.experiments.gaussian.defaults import *
 

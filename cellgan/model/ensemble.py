@@ -1,5 +1,5 @@
 import tensorflow as tf
-from cellgan.lib.discriminator import CellCnn
+from cellgan.model.discriminator import CellCnn
 
 
 class CellCnnEnsemble(object):

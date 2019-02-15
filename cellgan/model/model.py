@@ -1,6 +1,6 @@
 import tensorflow as tf
-from cellgan.lib.generator import CellGanGen
-from cellgan.lib.ensemble import CellCnnEnsemble
+from cellgan.model.generator import CellGanGen
+from cellgan.model.ensemble import CellCnnEnsemble
 
 
 class CellGan(object):
