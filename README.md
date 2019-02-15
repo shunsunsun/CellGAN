@@ -1,6 +1,6 @@
-# CellGan
+# CellGAN
 
-CellGan is a Generative Adversarial Network that aims to learn the cellular heterogeneity from flow cytometry data in an interpretable manner and use it for defining subpopulations. 
+CellGAN is a Generative Adversarial Network that aims to learn the cellular heterogeneity from flow cytometry data in an interpretable manner and use it for defining subpopulations. 
 
 ## Datasets 
 
@@ -10,12 +10,12 @@ CellGan is a Generative Adversarial Network that aims to learn the cellular hete
 
 ## Training
 
-NOTE: All commands must be run in a terminal from project root
+NOTE: All commands must be run in a terminal from project root.
 
 The following steps are in reference to running jobs on the Leonhard cluster:
 
-* Train a CellGAN model on the Mixture of Gaussian data, run `make gaussian`
-* Train a CellGAN model on the Bodenmiller data run `make bodenmiller`
+* To train a CellGAN model on the Mixture of Gaussian data, run `make gaussian`
+* To train a CellGAN model on the Bodenmiller data run `make bodenmiller`
 
 ## Baselines
 
