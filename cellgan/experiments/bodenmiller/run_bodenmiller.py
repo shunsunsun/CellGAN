@@ -6,12 +6,11 @@ import time
 import logging
 from datetime import datetime as dt
 import datetime
-# import numpy as np
 import tensorflow as tf
 from sklearn.decomposition import PCA
 import umap
 
-from cellgan.lib.data_utils import load_fcs
+from cellgan.lib.data_utils import load_fcs, get_fcs_filenames
 from cellgan.lib.utils import get_filters, get_num_pooled, write_hparams_to_file
 from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights, build_logger
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
@@ -21,24 +20,25 @@ from cellgan.experiments.bodenmiller.defaults import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-
 def main():
     parser = argparse.ArgumentParser()
 
     # IO parameters
-    parser.add_argument('--fcs', dest='fcs_file', default=DEFAULT_FCS_FILE,
-                        help='file containing names of .fcs files to be used for GAN training')
-
-    parser.add_argument('--markers', dest='marker_file', default=DEFAULT_MARKERS_FILE,
-                        help='Filename containing the markers of interest')
-
-    parser.add_argument('--in_dir', dest='input_dir', default=DEFAULT_INPUT_DIR,
+    parser.add_argument('--in_dir', dest='input_dir', default=DATA_DIR,
                         help='Directory containing the input .fcs files')
 
     parser.add_argument('-o', '--out_dir', dest='output_dir', default=DEFAULT_OUT_DIR,
                         help='Directory where output will be generated.')
 
+    parser.add_argument('--markers', nargs='+', type=str, default=DEFAULT_MARKERS,
+                        help='List of markers')
+
     # data processing
+    parser.add_argument('--inhibitor', default=DEFAULT_INHIBITOR, 
+                        help='Inhibitor used for the experiment')
+
+    parser.add_argument('--strength', default=DEFAULT_INHIB_STRENGTH, 
+                        dest='inhib_strength', help='strength of inhibitor used.')
 
     parser.add_argument('--sub_limit', dest='subpopulation_limit', type=int, default=30,
                         help='Minimum number of cells to be called a subpopulation')
@@ -81,7 +81,6 @@ def main():
                         help='Loss coefficient for mixture of experts loss')
 
     # Discriminator Parameters
-
     parser.add_argument('--num_cell_cnns', default=30, type=int,
                         help='Number of CellCnns in the ensemble')
 
@@ -104,7 +103,6 @@ def main():
                         help='Dropout probability')
 
     # Training Specific
-
     parser.add_argument('--subset', dest='subset_sample', default='outlier',
                         choices=['random', 'outlier'],
                         help='Whether to bias the subset selection towards rare subpopulations')
@@ -142,7 +140,6 @@ def main():
                         default=10000, help='Number of iterations to run the GAN')
 
     # Testing and plotting
-
     parser.add_argument('--num_samples', dest='num_samples', type=int,
                         help='Number of samples to generate while testing')
 
@@ -154,20 +151,17 @@ def main():
 
     # Setup the output directory
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
-    output_dir = os.path.join(args.output_dir, experiment_name)
+    output_dir = os.path.join(args.output_dir, args.inhibitor, experiment_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # List of files to be read
-    with open(args.fcs_file, 'r') as f:
-        fcs_files_of_interest = json.load(f)
-    with open(args.marker_file, 'r') as f:
-        markers_of_interest = json.load(f)
-
-    inhibitor_used = fcs_files_of_interest[0].split('_')[0]
-    inhibitor_strength_used = fcs_files_of_interest[0].split('.')[0][-3:]
+    markers_of_interest = args.markers
+    inhibitor = args.inhibitor
+    inhibitor_strength = args.inhib_strength
     fcs_savefile = os.path.join(output_dir, 'fcs.csv')
     markers_savefile = os.path.join(output_dir, 'markers.csv')
+
+    fcs_files_of_interest = get_fcs_filenames(args.input_dir, inhibitor, inhibitor_strength)
 
     # Saving list of files and markers to output directory
     with open(fcs_savefile, 'w') as f:
@@ -291,7 +285,7 @@ def main():
         'num_critic': args.num_critic,
         'num_cell_per_input': args.num_cells_per_input,
         'num_cell_cnns': args.num_cell_cnns,
-        'inhibitor_strength': inhibitor_strength_used,
+        'inhibitor_strength': inhibitor_strength,
         'subpopulation_limit': args.subpopulation_limit,
         'cofactor': args.cofactor
 
@@ -304,12 +298,10 @@ def main():
 
     # Log data to output file
     cellgan_logger.info("Experiment Name: " + experiment_name)
-    cellgan_logger.info("Inhibitor Used {} with strength {} ".format(
-        inhibitor_used, inhibitor_strength_used))
+    cellgan_logger.info("Inhibitor {} with strength {} ".format(inhibitor, inhibitor_strength))
     cellgan_logger.info("Starting our experiments with {} subpopulations".
                         format(num_subpopulations))
-    cellgan_logger.info(
-        "Number of filters in the CellCnn Ensemble are: {}".format(d_filters))
+    cellgan_logger.info("Number of filters in the CellCnn Ensemble are: {}".format(d_filters))
     cellgan_logger.info(
         "number of cells pooled in the CellCnn Ensemble are: {} \n".format(
             d_pooled))
@@ -318,7 +310,7 @@ def main():
     discriminator_loss = list()
     generator_loss = list()
 
-    # Fit PCA object already
+    # Fit PCA object
     pca = PCA(n_components=2)
     pca = pca.fit(training_data)
 

@@ -11,7 +11,7 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GaussianMixture
 import umap
 
-from cellgan.lib.data_utils import load_fcs
+from cellgan.lib.data_utils import load_fcs, get_fcs_filenames
 from cellgan.lib.utils import write_hparams_to_file, build_logger, generate_subset
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.lib.plotting import plot_marker_distributions, plot_pca, plot_umap
@@ -24,19 +24,22 @@ def main():
     parser = argparse.ArgumentParser()
 
     # IO parameters
-    parser.add_argument('-f', '--fcs', dest='fcs_file', default=DEFAULT_FCS_FILE,
-                        help='file containing names of .fcs files to be used for GAN training')
+    parser.add_argument('-m', '--markers', nargs='+', default=DEFAULT_MARKERS,
+                        help='List of markers')
 
-    parser.add_argument('-m', '--markers', dest='marker_file', default=DEFAULT_MARKERS_FILE,
-                        help='Filename containing the markers of interest')
-
-    parser.add_argument('-i', '--in_dir', dest='input_dir', default=DEFAULT_INPUT_DIR,
+    parser.add_argument('-i', '--in_dir', dest='input_dir', default=DATA_DIR,
                         help='Directory containing the input .fcs files')
 
     parser.add_argument('-o', '--out_dir', dest='output_dir', default=DEFAULT_OUT_DIR,
                         help='Directory where output will be generated.')
 
     # data processing
+    parser.add_argument('--inhibitor', default=DEFAULT_INHIBITOR, 
+                        help='Inhibitor used for the experiment')
+
+    parser.add_argument('--strength', default=DEFAULT_INHIB_STRENGTH, 
+                        dest='inhib_strength', help='strength of inhibitor used.')
+    
     parser.add_argument('--sub_limit', dest='subpopulation_limit', type=int, default=30,
                         help='Minimum number of cells to be called a subpopulation')
 
@@ -71,20 +74,25 @@ def main():
                         help='Number of samples to generate while testing')
     args = parser.parse_args()
     
-    with open(args.fcs_file, 'r') as f:
-        fcs_files_of_interest = json.load(f)
-
-    with open(args.marker_file, 'r') as f:
-        markers_of_interest = json.load(f)
-
-    inhibitor_used = fcs_files_of_interest[0].split('_')[0]
-    inhibitor_strength_used = fcs_files_of_interest[0].split('.')[0][-3:]
-
     # Setup the output directory
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
-    output_dir = os.path.join(args.output_dir, experiment_name)
+    output_dir = os.path.join(args.output_dir, args.inhibitor, experiment_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    markers_of_interest = args.markers
+    inhibitor = args.inhibitor
+    inhibitor_strength = args.inhib_strength
+    fcs_savefile = os.path.join(output_dir, 'fcs.csv')
+    markers_savefile = os.path.join(output_dir, 'markers.csv')
+
+    fcs_files_of_interest = get_fcs_filenames(args.input_dir, inhibitor, inhibitor_strength)
+
+    # Saving list of files and markers to output directory
+    with open(fcs_savefile, 'w') as f:
+        f.write(json.dumps(fcs_files_of_interest))
+    with open(markers_savefile, 'w') as f:
+        f.write(json.dumps(markers_of_interest))
 
     # Build logger
     gmm_logger = build_logger(
@@ -159,8 +167,7 @@ def main():
 
     # Log data to output file
     gmm_logger.info("Experiment Name: " + experiment_name)
-    gmm_logger.info("Inhibitor Used {} with strength {} ".format(
-        inhibitor_used, inhibitor_strength_used))
+    gmm_logger.info("Inhibitor {} with strength {} ".format(inhibitor, inhibitor_strength))
     gmm_logger.info("Starting our baseline experiments with {} "
                     "subpopulations".format(num_subpopulations))
 

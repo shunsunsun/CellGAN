@@ -3,6 +3,7 @@ import flowio
 from collections import namedtuple
 from FlowCal.io import FCSData
 import os
+import re
 
 # FCSFile is a named tuple with two attributes, data and channels
 # data: Data from the Flow cytometry experiment
@@ -10,6 +11,16 @@ import os
 
 FCSFile = namedtuple('FCSFile', ['data', 'channels'])
 
+def get_fcs_filenames(input_dir, inhibitor, inhibitor_strength):
+    """Gets the list of fcs files corresponding to inhibitor and strength."""
+    input_files = os.listdir(os.path.join(input_dir, inhibitor))
+    files_to_save = list()
+    p = re.compile(inhibitor_strength)
+
+    for file in input_files:
+        if bool(p.search(file)):
+            files_to_save.append(file)
+    return files_to_save
 
 def read_fcs_data(file_path):
     """
@@ -49,7 +60,7 @@ def load_fcs(fcs_files, markers, args, logger=None):
     training_labels = list()
 
     for file in fcs_files:
-        file_path = os.path.join(args.input_dir, file.strip())
+        file_path = os.path.join(args.input_dir, args.inhibitor, file.strip())
         fcs_data = read_fcs_data(file_path=file_path)
         try:
             marker_indices = extract_marker_indices(
