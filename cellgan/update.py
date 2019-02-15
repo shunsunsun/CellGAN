@@ -41,10 +41,14 @@ def main():
 
     sample = experiments[0]
     hparams = load_hparams_from_exp(save_dir, sample)
+    hparams.pop('d_filters', None)
+    hparams.pop('d_pooled', None)
     hparams_all = {param: list() for param in hparams}
 
     for experiment in experiments:
         hparams = load_hparams_from_exp(save_dir, experiment)
+        hparams.pop('d_filters', None)
+        hparams.pop('d_pooled', None)
         for param in hparams:
             hparams_all[param].append(hparams[param])
 
