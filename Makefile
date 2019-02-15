@@ -17,8 +17,10 @@ gaussian-cpu:
 bodenmiller-cpu:
 	bash train-cpu/bodenmiller.sh
 
-# GPU scripts
+phenograph-cpu:
+	bash train-cpu/phenograph.sh
 
+# GPU scripts
 gmm:
 	bsub -n 4 -N -W 4:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/gmm.sh
 
@@ -28,3 +30,5 @@ gaussian:
 bodenmiller:
 	bsub -n 8 -N -W 30:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/bodenmiller.sh
 
+phenograph:
+	bsub -n 8 -N -W 4:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/phenograph.sh
