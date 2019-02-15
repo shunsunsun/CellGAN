@@ -7,7 +7,7 @@ python -m cellgan.experiments.bodenmiller.get_bodenmiller_files --regex A02
 echo "Files prepared. "
 
 echo "Training CellGAN on real data..."
-bsub -n 8 -N -W 30:30 -R "rusage[mem=2048,ngpus_excl_p=1]" python -m cellgan.experiments.bodenmiller.run_bodenmiller \
+python -m cellgan.experiments.bodenmiller.run_bodenmiller \
     --disc_learning_rate 5e-4 \
     --gen_learning_rate 2e-4 \
     --experts 50 \

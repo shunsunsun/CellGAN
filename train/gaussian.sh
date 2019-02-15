@@ -4,7 +4,7 @@ module load python_gpu/3.6.4 cuda/9.0.176 cudnn/7.0
 
 echo "Training..."
 
-bsub -n 8 -N -W 24:30 -R "rusage[mem=2048,ngpus_excl_p=1]" python -m cellgan.experiments.gaussian.run_gaussian \
+python -m cellgan.experiments.gaussian.run_gaussian \
     --disc_learning_rate 2e-4 \
     --gen_learning_rate 5e-4 \
     --experts 10 \
