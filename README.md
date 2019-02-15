@@ -25,7 +25,7 @@ The baseline methods we compare to include (All commands must be run in a termin
 * [FlowSOM](https://www.ncbi.nlm.nih.gov/pubmed/25573116): Train FlowSOM by running `make flowsom` (TODO)
 * GMM: Train Gaussian Mixture Model by running `make gmm`
 * [XShift](https://www.nature.com/articles/nmeth.3863): Train XShift by running `make xshift` (TODO)
-* [PhenoGraph](https://www.cell.com/cell/fulltext/S0092-8674(15)00637-6): Train PhenoGraph by running `make pheno`(TODO)
+* [PhenoGraph](https://www.cell.com/cell/fulltext/S0092-8674(15)00637-6): Train PhenoGraph by running `make phenograph`
 
 ## Third Party Code
 
