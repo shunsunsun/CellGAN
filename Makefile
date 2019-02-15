@@ -20,11 +20,11 @@ bodenmiller-cpu:
 # GPU scripts
 
 gmm:
-	bsub -n 8 -N -W 24:30 -R "rusage[mem=2048,ngpus_excl_p=1]" train/gmm.sh
+	bash train/gmm.sh
 
 gaussian:
-	bsub -n 8 -N -W 24:30 -R "rusage[mem=2048,ngpus_excl_p=1]" train/gaussian.sh
+	bash train/gaussian.sh
 
 bodenmiller:
-	bsub -n 8 -N -W 30:30 -R "rusage[mem=2048,ngpus_excl_p=1]" train/bodenmiller.sh
+	bash train/bodenmiller.sh
 
