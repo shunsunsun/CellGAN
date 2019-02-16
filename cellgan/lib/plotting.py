@@ -9,7 +9,9 @@ import seaborn as sns
 
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
-            fake_subset, fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
+            fake_subset, fake_subset_labels, num_experts, num_subpopulations, iteration, logger, 
+            zero_sub=False, all_real_vs_expert=False, each_subpop=False):
+
     """ Generates plots for each expert based on given method 
     :param out_dir: results directory
     :param method: What type of plot (one of {pca, umap, tsne})
@@ -23,6 +25,8 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     :param iteration: which iteration of training are we at
     :param logger: logger used
     :param zero_sub: Whether subpopulations labelled from 0 or 1
+    :param all_real_vs_expert: Whether to plot each expert vs real subset
+    :param each_subpop: Whether to plot each expert vs each subpopulation
 
     """
     # The actual directory where results are saved
@@ -52,105 +56,139 @@ def plotter(out_dir, method, transformer, real_subset, real_subset_labels,
     plt.close()
 
     for expert in range(num_experts):
-        expert_dir = os.path.join(save_dir, 'Expert_{}'.format(expert+1))
-        if not os.path.exists(expert_dir):
-            os.makedirs(expert_dir)
-
         indices = np.flatnonzero(fake_subset_labels == expert)
         fake_data_by_expert = transformed_fake[indices]
 
-        for subpopulation in range(num_subpopulations):
-            if zero_sub:
-                indices = np.flatnonzero(real_subset_labels == subpopulation)
-            else:
-                indices = np.flatnonzero(real_subset_labels == subpopulation + 1)
-            real_data_by_sub = transformed_real[indices]
+        if each_subpop:
+            expert_dir = os.path.join(save_dir, 'Expert_{}'.format(expert+1))
+            if not os.path.exists(expert_dir):
+                os.makedirs(expert_dir)
 
-            f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
+            plot_subpop_vs_expert(method=method, expert_dir=expert_dir, expert=expert,
+                                  transformed_real=transformed_real, real_subset_labels=real_subset_labels,
+                                  fake_data_by_expert=fake_data_by_expert, num_subpopulations=num_subpopulations,
+                                  zero_sub=zero_sub)
 
-            # Second plot (Real Subpopulation, Fake Data)
-            axes[1].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:blue',
-                            label='Subpopulation {}'.format(subpopulation+1))
-            axes[1].scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='tab:orange',
-                            label='Expert {}'.format(expert+1))
-
-            # axes[1].set_title("MMD value: {}".format(mmd))
-            axes[1].legend()
-
-            # First plot
-            xmin, xmax = axes[1].get_xlim()
-            ymin, ymax = axes[1].get_ylim()
-
-            axes[0].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:gray',
-                            label='Subpopulation {}'.format(subpopulation+1))
-            axes[0].set_xlim([xmin, xmax])
-            axes[0].set_ylim([ymin, ymax])
-            axes[0].legend()
-
-            axes[1].set_xlabel(labels[0])
-            axes[1].set_ylabel(labels[1])
-            axes[0].set_xlabel(labels[0])
-            axes[0].set_ylabel(labels[1])
-
-            savefile = os.path.join(expert_dir, 'Subpopulation_{}.png'.format(subpopulation+1))
-            f.tight_layout()
-            plt.savefig(savefile)
-            plt.close()
-
-        # All real vs single expert
-        plt.figure()
-        cmap = matplotlib.cm.get_cmap('viridis')
-        colors = cmap(np.linspace(0, 1, len(np.unique(real_subset_labels))))
-        for i, subsets in enumerate(np.unique(real_subset_labels)):
-            temp_ind = np.where(np.asarray(real_subset_labels) == subsets)[0]
-            plt.scatter(transformed_real[temp_ind, 0], transformed_real[temp_ind, 1], c=colors[i].reshape((1, 4)),
-                        s=1)
-        plt.scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='red', s=1)
-        plt.xlabel(labels[0])
-        plt.ylabel(labels[1])
-        plt.title('Expert {}'.format(expert+1))
-        plt.tight_layout()
-        plt.savefig(os.path.join(save_dir, 'All-real_vs_expert_' + str(expert) + '.png'))
-        plt.close()
-
-        if logger is not None:
-            logger.info(method.upper() + ' plots added for expert {}'.format(str(expert+1)))
+        if all_real_vs_expert:
+            expert_dir = os.path.join(save_dir, 'Expert_{}'.format(expert+1))
+            if not os.path.exists(expert_dir):
+                os.makedirs(expert_dir)
+                
+            plot_all_real_vs_expert(out_dir=out_dir, method=method, transformed_real=transformed_real,
+                                    real_subset_labels=real_subset_labels, fake_data_by_expert=fake_data_by_expert,
+                                    expert=expert, iteration=iteration)
 
     if logger is not None:
         logger.info("\n")
 
 
+def plot_subpop_vs_expert(method, expert_dir, expert, transformed_real, real_subset_labels,
+                          fake_data_by_expert, num_subpopulations, zero_sub=False):
+    """Generates plot for expert vs each subpopulation for given method."""
+
+    label_dict = {'pca': ['PC1', 'PC2'], 'umap': ['UM1', 'UM2'], 'tsne': ['TSNE1', 'TSNE2']}
+    labels = label_dict[method]
+
+    for subpopulation in range(num_subpopulations):
+        if zero_sub:
+            indices = np.flatnonzero(real_subset_labels == subpopulation)
+        else:
+            indices = np.flatnonzero(real_subset_labels == subpopulation + 1)
+        real_data_by_sub = transformed_real[indices]
+
+        f, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
+
+        # (Real Subpopulation, Fake Data)
+        axes[1].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:blue',
+                        label='Subpopulation {}'.format(subpopulation + 1))
+        axes[1].scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='tab:orange',
+                        label='Expert {}'.format(expert + 1))
+        axes[1].legend()
+
+        # Real subpopulation
+        xmin, xmax = axes[1].get_xlim()
+        ymin, ymax = axes[1].get_ylim()
+
+        axes[0].scatter(real_data_by_sub[:, 0], real_data_by_sub[:, 1], c='tab:gray',
+                        label='Subpopulation {}'.format(subpopulation + 1))
+        axes[0].set_xlim([xmin, xmax])
+        axes[0].set_ylim([ymin, ymax])
+        axes[0].legend()
+
+        axes[1].set_xlabel(labels[0])
+        axes[1].set_ylabel(labels[1])
+        axes[0].set_xlabel(labels[0])
+        axes[0].set_ylabel(labels[1])
+
+        savefile = os.path.join(expert_dir, 'Subpopulation_{}.png'.format(subpopulation + 1))
+        f.tight_layout()
+        plt.savefig(savefile)
+        plt.close()
+
+
+def plot_all_real_vs_expert(out_dir, method, transformed_real, real_subset_labels,
+                            fake_data_by_expert, expert, iteration):
+    """Generates plot of expert vs real subpopulations."""
+
+    dirname = os.path.join(out_dir, str(iteration + 1))
+    save_dir = os.path.join(dirname, method + '_plots')
+
+    label_dict = {'pca': ['PC1', 'PC2'], 'umap': ['UM1', 'UM2'], 'tsne': ['TSNE1', 'TSNE2']}
+    labels = label_dict[method]
+
+    plt.figure()
+    cmap = matplotlib.cm.get_cmap('viridis')
+    colors = cmap(np.linspace(0, 1, len(np.unique(real_subset_labels))))
+    for i, subsets in enumerate(np.unique(real_subset_labels)):
+        temp_ind = np.where(np.asarray(real_subset_labels) == subsets)[0]
+        plt.scatter(transformed_real[temp_ind, 0], transformed_real[temp_ind, 1], c=colors[i].reshape((1, 4)),
+                    s=1)
+    plt.scatter(fake_data_by_expert[:, 0], fake_data_by_expert[:, 1], c='red', s=1)
+    plt.xlabel(labels[0])
+    plt.ylabel(labels[1])
+    plt.title('Expert {}'.format(expert+1))
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'All-real_vs_expert_' + str(expert+1) + '.png'))
+    plt.close()
+
+
 def plot_pca(out_dir, pca_obj, real_subset, real_subset_labels, fake_subset,
-             fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
-    """ Generates the PCA plot for each expert """
+             fake_subset_labels, num_experts, num_subpopulations, iteration, logger,
+             zero_sub=False, all_real_vs_expert=False, each_subpop=False):
+    """Generates the PCA plot for each expert."""
 
     plotter(out_dir=out_dir, method='pca', transformer=pca_obj, 
             real_subset=real_subset, real_subset_labels=real_subset_labels, 
             fake_subset=fake_subset, fake_subset_labels=fake_subset_labels, 
             num_experts=num_experts, num_subpopulations=num_subpopulations, 
-            iteration=iteration, logger=logger, zero_sub=zero_sub)
+            iteration=iteration, logger=logger, zero_sub=zero_sub,
+            all_real_vs_expert=all_real_vs_expert, each_subpop=each_subpop)
 
 
 def plot_umap(out_dir, umap_obj, real_subset, real_subset_labels, fake_subset,
-              fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
-    """ Generates the UMAP plot """
+              fake_subset_labels, num_experts, num_subpopulations, iteration, logger,
+              zero_sub=False, all_real_vs_expert=False, each_subpop=False):
+    """Generates the UMAP plot."""
     
     plotter(out_dir=out_dir, method='umap', transformer=umap_obj, 
             real_subset=real_subset, real_subset_labels=real_subset_labels, 
             fake_subset=fake_subset, fake_subset_labels=fake_subset_labels, 
             num_experts=num_experts, num_subpopulations=num_subpopulations, 
-            iteration=iteration, logger=logger, zero_sub=zero_sub)
+            iteration=iteration, logger=logger, zero_sub=zero_sub,
+            all_real_vs_expert=all_real_vs_expert, each_subpop=each_subpop)
 
 
 def plot_tsne(out_dir, tsne_obj, real_subset, real_subset_labels, fake_subset,
-              fake_subset_labels, num_experts, num_subpopulations, iteration, logger, zero_sub=False):
+              fake_subset_labels, num_experts, num_subpopulations, iteration, logger,
+              zero_sub=False, all_real_vs_expert=False, each_subpop=False):
     """ Generates the tsne plot """
 
     plotter(out_dir=out_dir, method='tsne', transformer=tsne_obj, 
             real_subset=real_subset, real_subset_labels=real_subset_labels, 
             fake_subset=fake_subset, fake_subset_labels=fake_subset_labels, 
             num_experts=num_experts, num_subpopulations=num_subpopulations,
-            iteration=iteration, logger=logger, zero_sub=zero_sub)
+            iteration=iteration, logger=logger, zero_sub=zero_sub,
+            all_real_vs_expert=all_real_vs_expert, each_subpop=each_subpop)
 
 
 def plot_marker_distributions(out_dir,

@@ -13,4 +13,4 @@ python -m cellgan.experiments.bodenmiller.run_bodenmiller \
     --num_iter 10000 \
     --batch_size 64 \
     --noise_size 200 \
-    --plot_every_n 500
+    --plot_every 500

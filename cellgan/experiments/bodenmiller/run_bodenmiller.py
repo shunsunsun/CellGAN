@@ -140,15 +140,34 @@ def main():
     parser.add_argument('--num_iter', dest='num_iterations', type=int,
                         default=10000, help='Number of iterations to run the GAN')
 
-    # Testing and plotting
+    # Testing, saving and plotting
     parser.add_argument('--num_samples', dest='num_samples', type=int,
                         help='Number of samples to generate while testing')
 
-    parser.add_argument('--plot_every_n', type=int, default=500,
+    parser.add_argument('--plot_every', type=int, default=500,
                         help='Add plots every n samples')
 
-    parser.add_argument('--plot_heatmap', action='store_true', help='Whether to plot heatmap.')
+    parser.add_argument('--plot_heatmap', action='store_true', 
+                        help='Whether to plot heatmap.')
+
+    parser.add_argument('--save_model_every_n', action='store_true', 
+                        help='Whether to save the model every time plots are added')
+
+    parser.add_argument('--each_subpop', action='store_true',
+                        help='Whether to plot expert vs each subpopulation')
+
+    parser.add_argument('--real_vs_expert', action='store_true',
+                        help='Whether to plot all real vs expert')
+
     args = parser.parse_args()
+
+    each_subpop = False
+    if args.each_subpop:
+        each_subpop = True
+
+    all_real_vs_expert = False
+    if args.real_vs_expert:
+        all_real_vs_expert = True
 
     # Setup the output directory
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
@@ -211,11 +230,7 @@ def main():
     cellgan_logger.info("Number of cells to be pooled sampled.\n")
 
     num_subpopulations = len(np.unique(training_labels))
-
-    if not args.num_experts or args.num_experts <= num_subpopulations:
-        num_experts = num_subpopulations
-    else:
-        num_experts = args.num_experts
+    num_experts = args.num_experts
 
     if not args.num_samples:
         num_samples = training_data.shape[0]
@@ -383,7 +398,7 @@ def main():
             discriminator_loss.append(d_loss)
             generator_loss.append(g_loss)
 
-            if iteration % args.plot_every_n == 0:
+            if iteration % args.plot_every == 0:
                 model.set_train(False)
 
                 frequency_sampled_batch = compute_frequency(
@@ -485,7 +500,9 @@ def main():
                     num_subpopulations=num_subpopulations,
                     iteration=iteration,
                     logger=cellgan_logger,
-                    zero_sub=True)
+                    zero_sub=True,
+                    each_subpop=each_subpop, 
+                    all_real_vs_expert=all_real_vs_expert)
 
                 cellgan_logger.info("PCA plots added. \n")
 
@@ -502,7 +519,9 @@ def main():
                     num_subpopulations=num_subpopulations,
                     iteration=iteration,
                     logger=cellgan_logger,
-                    zero_sub=True)
+                    zero_sub=True,
+                    each_subpop=each_subpop,
+                    all_real_vs_expert=all_real_vs_expert)
 
                 # Umap on fake data
                 um2 = umap.UMAP(n_neighbors=5, min_dist=0.3, metric='correlation')

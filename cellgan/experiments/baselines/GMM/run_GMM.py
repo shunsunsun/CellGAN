@@ -72,7 +72,22 @@ def main():
     # Testing specific
     parser.add_argument('--num_samples', dest='num_samples', type=int,
                         help='Number of samples to generate while testing')
+
+    parser.add_argument('--each_subpop', action='store_true',
+                        help='Whether to plot expert vs each subpopulation')
+
+    parser.add_argument('--real_vs_expert', action='store_true',
+                        help='Whether to plot all real vs expert')
+
     args = parser.parse_args()
+
+    each_subpop = False
+    if args.each_subpop:
+        each_subpop = True
+
+    all_real_vs_expert = False
+    if args.real_vs_expert:
+        all_real_vs_expert = True
     
     # Setup the output directory
     experiment_name = dt.now().strftime("%d_%m_%Y-%H_%M_%S")
@@ -248,7 +263,9 @@ def main():
         num_subpopulations=num_subpopulations,
         iteration=0,
         logger=gmm_logger,
-        zero_sub=True)
+        zero_sub=True,
+        each_subpop=each_subpop, 
+        all_real_vs_expert=all_real_vs_expert)
 
     gmm_logger.info("PCA plots added. \n")
 
@@ -265,7 +282,9 @@ def main():
         num_subpopulations=num_subpopulations,
         iteration=0,
         logger=gmm_logger,
-        zero_sub=True)
+        zero_sub=True,
+        each_subpop=each_subpop,
+        all_real_vs_expert=all_real_vs_expert)
 
     gmm_logger.info("UMAP plots added. \n")
 

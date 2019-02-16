@@ -142,8 +142,25 @@ def main():
     parser.add_argument('--num_samples', dest='num_samples', type=int,
                         help='Number of samples to generate while testing')
 
-    parser.add_argument('--plot_every_n', type=int, default=500,
+    parser.add_argument('--plot_every', type=int, default=500,
                         help='Add plots every n samples')
+
+    parser.add_argument('--each_subpop', action='store_true',
+                        help='Whether to plot expert vs each subpopulation')
+
+    parser.add_argument('--real_vs_expert', action='store_true',
+                        help='Whether to plot all real vs expert')
+
+    args = parser.parse_args()
+
+    each_subpop = False
+    if args.each_subpop:
+        each_subpop = True
+
+    all_real_vs_expert = False
+    if args.real_vs_expert:
+        all_real_vs_expert = True
+
     args = parser.parse_args()
 
     num_subpopulations = args.num_subpopulations
@@ -364,7 +381,7 @@ def main():
             discriminator_loss.append(d_loss)
             generator_loss.append(g_loss)
 
-            if iteration % args.plot_every_n == 0:
+            if iteration % args.plot_every == 0:
                 model.set_train(False)
 
                 frequency_sampled_batch = compute_frequency(
@@ -465,7 +482,9 @@ def main():
                     num_subpopulations=num_subpopulations,
                     iteration=iteration,
                     logger=cellgan_logger,
-                    zero_sub=True)
+                    zero_sub=True,
+                    each_subpop=each_subpop,
+                    all_real_vs_expert=all_real_vs_expert)
 
                 cellgan_logger.info("PCA plots added. \n")
 
@@ -482,7 +501,9 @@ def main():
                     num_subpopulations=num_subpopulations,
                     iteration=iteration,
                     logger=cellgan_logger,
-                    zero_sub=True)
+                    zero_sub=True,
+                    each_subpop=each_subpop,
+                    all_real_vs_expert=all_real_vs_expert)
                 cellgan_logger.info("UMAP plots added. \n")
 
                 # Plotting the heatmap of gating weights
