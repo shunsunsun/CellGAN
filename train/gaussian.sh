@@ -8,4 +8,7 @@ python -m cellgan.experiments.gaussian.run_gaussian \
     --gen_learning_rate 5e-4 \
     --experts 10 \
     --num_cell_cnns 30 \
-    --num_iter 10000
+    --num_iter 10000 \
+    --plot_every 500 \
+    --each_subpop \
+    --real_vs_expert

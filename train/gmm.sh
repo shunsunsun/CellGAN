@@ -9,4 +9,6 @@ python -m cellgan.experiments.baselines.GMM.run_GMM \
     --learning_rate 5e-4 \
     --experts 20 \
     --num_cell_cnns 50 \
-    --num_iter 6000
+    --num_iter 6000 \
+    --real_vs_expert \
+    --each_subpop
