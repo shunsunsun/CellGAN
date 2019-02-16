@@ -43,12 +43,18 @@ def main():
     hparams = load_hparams_from_exp(save_dir, sample)
     hparams.pop('d_filters', None)
     hparams.pop('d_pooled', None)
-    hparams_all = {param: list() for param in hparams}
+
+    params = ['exp_name']
+    params += list(hparams.keys())
+    hparams_all = {param: list() for param in params}
 
     for experiment in experiments:
+        if not experiment[0].isdigit():
+            continue
         hparams = load_hparams_from_exp(save_dir, experiment)
         hparams.pop('d_filters', None)
         hparams.pop('d_pooled', None)
+        hparams_all['exp_name'].append(experiment)
         for param in hparams:
             hparams_all[param].append(hparams[param])
 
