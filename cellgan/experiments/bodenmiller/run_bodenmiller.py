@@ -203,8 +203,6 @@ def main():
         args=args,
         logger=cellgan_logger
     )
-    training_data = np.vstack(training_data)
-    training_labels = np.concatenate(training_labels)
 
     cellgan_logger.info("Loading and processing completed.")
     cellgan_logger.info(

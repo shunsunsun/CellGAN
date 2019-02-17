@@ -86,8 +86,6 @@ def main():
         logger=pheno_logger
     )
 
-    training_data = np.vstack(training_data)
-    training_labels = np.concatenate(training_labels)
     training_labels_unique = np.unique(training_labels)
 
     pheno_logger.info("Loading and processing completed.")

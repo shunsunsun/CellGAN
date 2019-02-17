@@ -123,8 +123,6 @@ def main():
         args=args,
         logger=gmm_logger
     )
-    training_data = np.vstack(training_data)
-    training_labels = np.concatenate(training_labels)
 
     gmm_logger.info("Loading and processing completed.")
     gmm_logger.info(

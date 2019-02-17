@@ -83,4 +83,7 @@ def load_fcs(fcs_files, markers, args, logger=None):
         except AttributeError:
             pass
 
+    training_data = np.vstack(training_data)
+    training_labels = np.concatenate(training_labels)
+
     return training_data, training_labels
