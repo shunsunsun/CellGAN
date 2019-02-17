@@ -501,13 +501,13 @@ def compute_learnt_subpopulation_weights(expert_labels, expert_assignments,
     return learnt_subpopulation_weights
 
 
-def load_model(out_dir, session_obj):
+def load_model(out_dir, session_obj, iteration):
     """Load CellGAN model """
     from cellgan.model.model import CellGan
 
     model_name = 'model.ckpt'
     hparams_file = os.path.join(out_dir, 'Hparams.txt')
-    model_path = os.path.join(out_dir, model_name)
+    model_path = os.path.join(out_dir, str(iteration), model_name)
 
     with open(hparams_file, 'r') as f:
         hparams = json.load(f)
