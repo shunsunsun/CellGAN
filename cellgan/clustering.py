@@ -57,7 +57,7 @@ def main():
 
         means = list()
         for expert in range(num_experts):
-            indices = np.nonzero(expert == fake_sample_experts)
+            indices = np.flatnonzero(fake_sample_experts == expert)
             means.append(np.mean(fake_samples[indices], axis=0))
         means = np.array(means)
 
