@@ -37,8 +37,8 @@ update-cellgan:
 	python -m cellgan.update --method cellgan --inhibitor AKTi
 
 update-gmm:
-	python -m cellgan.update --method baseline --baseline_method gmm --inhibitor AKTi
+	python -m cellgan.update --method baseline --baseline_method GMM --inhibitor AKTi
 
-update-phenograph:
-	python -m cellgan.update --method baseline --baseline_method phenograph --inhibitor AKTi
+#update-phenograph:
+#	python -m cellgan.update --method baseline --baseline_method PhenoGraph --inhibitor AKTi
 
