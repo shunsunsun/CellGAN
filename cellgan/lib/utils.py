@@ -581,3 +581,43 @@ def compute_f_measure(y_true, y_pred):
         f_measure_i.append(n_c_i/N*f_measure_j[ind_max])
 
     return np.sum(f_measure_i)
+
+def compute_f_measure_uniformly_weighted(y_true, y_pred):
+    """
+    Compute f-measure of subpopulation prediction results.
+    :param y_true:
+    :param y_pred:
+    :return: double, f-measure
+    """
+
+    y_true_unique = np.unique(y_true)
+    y_pred_unique = np.unique(y_pred)
+
+    N = len(y_true)
+    f_measure_i = list()
+    n_c_i_total = list()
+
+    for i, y_i in enumerate(y_true_unique):
+        f_measure_j = list()
+        temp_ind_y = np.where(np.asarray(y_true) == y_i)[0]
+
+        binary_y_i = np.zeros((N, ))
+        binary_y_i[temp_ind_y] = 1
+
+        n_c_i = len(temp_ind_y)
+        for j, y_j in enumerate(y_pred_unique):
+            temp_ind_y_j = np.where(np.asarray(y_pred) == y_j)[0]
+
+            binary_y_j = np.zeros((N,))
+            binary_y_j[temp_ind_y_j] = 1
+
+            f_measure_j.append(f1_score(binary_y_i, binary_y_j))
+
+        f_measure_i.append(max(f_measure_j))
+        n_c_i_total.append(n_c_i)
+
+    n_c_i_total = np.asarray(n_c_i_total)
+    weights_i = np.asarray([1]*len(n_c_i_total))/len(n_c_i_total)
+
+    f_measure_i = np.asarray(f_measure_i)
+    return np.sum(weights_i * f_measure_i)
