@@ -7,7 +7,7 @@ import os
 import json
 from scipy.cluster.hierarchy import fcluster, linkage
 
-from cellgan.lib.utils import load_model, sample_z, compute_l2, compute_l1, compute_f_measure
+from cellgan.lib.utils import load_model, sample_z, compute_l2, compute_l1, compute_f_measure, compute_f_measure_uniformly_weighted
 from cellgan.lib.data_utils import get_fcs_filenames, load_fcs
 
 def main():
@@ -72,8 +72,7 @@ def main():
             cluster_labels = list()
             for i in range(num_samples):
                 cluster_labels.append(clusters[closest_experts[i]])
-
-            f_scores.append(compute_f_measure(training_labels, cluster_labels))
+            f_scores.append(compute_f_measure_uniformly_weighted(training_labels, cluster_labels))
 
         print(np.max(f_scores))
 

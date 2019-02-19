@@ -15,7 +15,7 @@ from sklearn.manifold import TSNE
 import pandas as pd
 
 from cellgan.lib.data_utils import load_fcs, get_fcs_filenames
-from cellgan.lib.utils import compute_f_measure, build_logger
+from cellgan.lib.utils import compute_f_measure_uniformly_weighted, build_logger
 from cellgan.experiments.baselines.PhenoGraph.defaults import *
 
 
@@ -121,8 +121,6 @@ def main():
     um = umap.UMAP()
     um_transform = um.fit_transform(training_data)
 
-    raise ValueError()
-
     # Fit TSNE object
     tsne = TSNE(n_components=2)
     tsne_transform = tsne.fit_transform(training_data)
@@ -134,7 +132,7 @@ def main():
     for i in range(args.n_runs):
         communities, graph, Q = phenograph.cluster(training_data)
         list_communities.append(communities)
-        f_measure = compute_f_measure(training_labels, communities)
+        f_measure = compute_f_measure_uniformly_weighted(training_labels, communities)
         list_f_measure.append(f_measure)
 
         # set all communities zero which are not part of rare subpopulations
@@ -144,7 +142,7 @@ def main():
             temp_ind = np.where(communities == com)[0]
             communities_rare[temp_ind] = com
 
-        f_measure_rare = compute_f_measure(training_labels_rare, communities_rare)
+        f_measure_rare = compute_f_measure_uniformly_weighted(training_labels_rare, communities_rare)
         list_f_measure_rare.append(f_measure_rare)
 
 
