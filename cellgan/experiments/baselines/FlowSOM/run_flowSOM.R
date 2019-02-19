@@ -77,7 +77,8 @@ fSOM_auto.res <- FlowSOM::BuildMST(fSOM_auto.res)
 meta_auto <- FlowSOM::MetaClustering(fSOM_auto.res$map$codes, method = "metaClustering_consensus")
 clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
 
-write.csv(clusters_auto, file="FlowSOM_clusters_A02.csv", row.names = FALSE)
+filename <- paste0("FlowSOM_clusters_", inhibitor, "_", strength, ".csv")
+write.csv(clusters_auto, file=filename, row.names = FALSE)
 
 # Manual meta clustering
 #TODO(vsomnath): Set max to 20 as that was the number of experts we used?

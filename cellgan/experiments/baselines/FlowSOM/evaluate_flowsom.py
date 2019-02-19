@@ -18,7 +18,7 @@ parser.add_argument("--cofactor", default=5)
 parser.add_argument("--sub_limit", dest="subpopulation_limit", default=30)
 args = parser.parse_args()
 
-read_vals = pd.read_csv("./cellgan/experiments/baselines/FlowSOM/FlowSOM_clusters_" + args.strength + ".csv")
+read_vals = pd.read_csv("./cellgan/experiments/baselines/FlowSOM/FlowSOM_clusters_" + args.inhibitor + "_" + args.strength + ".csv")
 clusters = np.array(read_vals)
 
 markers_of_interest = DEFAULT_MARKERS
