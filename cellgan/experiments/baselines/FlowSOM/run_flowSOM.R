@@ -3,23 +3,24 @@ library(FlowSOM)
 
 DEFAULT_MARKERS = c("CD3", "CD45", "CD4", "CD20", "CD33", "CD123", "CD14", "IgM", "HLA-DR", "CD7")
 DEFAULT_SUB_LIMIT = 30
+ 
+# # If running from RStudio, use this.
+# current_path <- rstudioapi::getActiveDocumentContext()$path
+# setwd(dirname(current_path))
 
-# If running from RStudio, use this.
-current_path <- rstudioapi::getActiveDocumentContext()$path
-setwd(dirname(current_path))
-
-#If running from terminal use this:
-#dir.name <- getSrcDirectory(function(x) {x})
-#setwd(dir.name)
-source("flowSOM_utils.R")
+args <- commandArgs(trailingOnly = TRUE)
+dir.name <- getwd()
+source(file.path(dir.name, "cellgan/experiments/baselines/FlowSOM/flowSOM_utils.R"))
 
 ###################################################
 ######## Data Loading and Preprocessing ###########
 ###################################################
 
-inhibitor = "AKTi"
-strength = "A02"
-DATA_DIR <- paste0("../../../../data/", inhibitor)
+inhibitor = toString(args[1])
+strength = toString(args[2])
+DATA_DIR <- file.path(dir.name, "data", inhibitor)
+RESULT_DIR <- file.path(dir.name, "results/baselines/FlowSOM", inhibitor)
+dir.create(RESULT_DIR, showWarnings = FALSE)
 
 files_to_process <- list.files(DATA_DIR, pattern=strength)
 
@@ -43,12 +44,13 @@ for (file in files_to_process){
   num_cells_measured <- dim(data)[1]
   if (num_cells_measured >= DEFAULT_SUB_LIMIT){
     
-    num_celltypes <- num_celltypes + 1
-    
     # Apply some data transformation
     data <- f_trans(data)
     training_data <- rbind(training_data, data)
     training_labels <- c(training_labels, rep(num_celltypes, num_cells_measured))
+    #print(length(training_labels))
+    
+    num_celltypes <- num_celltypes + 1
     
     print(paste0("File: ", file, " loaded and processed."))
     print(paste0("File: ", file, " has ", toString(num_cells_measured), " cells."))
@@ -77,18 +79,9 @@ fSOM_auto.res <- FlowSOM::BuildMST(fSOM_auto.res)
 meta_auto <- FlowSOM::MetaClustering(fSOM_auto.res$map$codes, method = "metaClustering_consensus")
 clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
 
-filename <- paste0("FlowSOM_clusters_", inhibitor, "_", strength, ".csv")
-write.csv(clusters_auto, file=filename, row.names = FALSE)
+labels_file <- paste0("Act_labels_", strength, ".csv")
+cluster_file <- paste0("FlowSOM_clusters_", strength, ".csv")
 
-# Manual meta clustering
-#TODO(vsomnath): Set max to 20 as that was the number of experts we used?
-# meta_man <- FlowSOM::MetaClustering(fSOM_man.res$map$codes, method = "metaClustering_consensus", max = 20)
-# clusters_man <- meta_man[fSOM_man.res$map$mapping[, 1]]
-
-#print("F-Measure using automatic clusters")
-#print(compute_f_measure_uniformly_weighted(training_labels, clusters_auto))
-
-#print("F-Measure using manual clusters")
-#print(compute_f_measure_uniformly_weighted(training_labels, clusters_man))
-
+write.csv(clusters_auto, file=file.path(RESULT_DIR, cluster_file), row.names = FALSE)
+write.csv(training_labels, file=file.path(RESULT_DIR, labels_file), row.names = FALSE)
 

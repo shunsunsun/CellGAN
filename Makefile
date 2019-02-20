@@ -1,5 +1,9 @@
-# Formatting and checks
 
+# Some defaults (TODO: Add these for all methods)
+INHIB=AKTi
+STREN=A02
+
+# Format and checks
 clean:
 	yapf -i -r cellgan/
 
@@ -20,6 +24,10 @@ bodenmiller-cpu:
 phenograph-cpu:
 	bash train-cpu/phenograph.sh
 
+flowsom:
+	Rscript cellgan/experiments/baselines/FlowSOM/run_flowSOM.R $(INHIB) $(STREN)
+	python -m cellgan.experiments.baselines.FlowSOM.evaluate_flowsom --inhibitor $(INHIB) --strength $(STREN)
+
 # GPU scripts
 gmm:
 	bsub -n 4 -N -W 4:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/gmm.sh
@@ -33,12 +41,11 @@ bodenmiller:
 phenograph:
 	bsub -n 8 -N -W 4:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/phenograph.sh
 
+# Updating experiments
+
 update-cellgan:
 	python -m cellgan.update --method cellgan --inhibitor AKTi
 
 update-gmm:
 	python -m cellgan.update --method baseline --baseline_method GMM --inhibitor AKTi
-
-#update-phenograph:
-#	python -m cellgan.update --method baseline --baseline_method PhenoGraph --inhibitor AKTi
 
