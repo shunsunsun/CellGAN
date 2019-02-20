@@ -18,8 +18,9 @@ source(file.path(dir.name, "cellgan/experiments/baselines/FlowSOM/flowSOM_utils.
 
 inhibitor = toString(args[1])
 strength = toString(args[2])
+nruns = as.numeric(args[3])
 DATA_DIR <- file.path(dir.name, "data", inhibitor)
-RESULT_DIR <- file.path(dir.name, "results/baselines/FlowSOM", inhibitor)
+RESULT_DIR <- file.path(dir.name, "results/baselines/FlowSOM", inhibitor, strength)
 dir.create(RESULT_DIR, showWarnings = FALSE)
 
 files_to_process <- list.files(DATA_DIR, pattern=strength)
@@ -65,23 +66,26 @@ training_data <- flowCore::flowFrame(training_data)
 ###### Running FlowSOM - manual and automatic number of clusters ######
 #######################################################################
 
-# Automatic number of clusters
-fSOM_auto.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
-fSOM_auto.res <- FlowSOM::BuildSOM(fSOM_auto.res, colsToUse = NULL)
-fSOM_auto.res <- FlowSOM::BuildMST(fSOM_auto.res)
+for (i in seq(nruns)){
 
-# Manual number of clusters
-# fSOM_man.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
-# fSOM_man.res <- FlowSOM::BuildSOM(fSOM_man.res, colsToUse = NULL, xdim = 20, ydim = 20)
-# fSOM_man.res <- FlowSOM::BuildMST(fSOM_man.res)
+  # Automatic number of clusters
+  fSOM_auto.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
+  fSOM_auto.res <- FlowSOM::BuildSOM(fSOM_auto.res, colsToUse = NULL)
+  fSOM_auto.res <- FlowSOM::BuildMST(fSOM_auto.res)
+  
+  # Manual number of clusters
+  # fSOM_man.res <- FlowSOM::ReadInput(training_data, transform = FALSE, scale = FALSE)
+  # fSOM_man.res <- FlowSOM::BuildSOM(fSOM_man.res, colsToUse = NULL, xdim = 20, ydim = 20)
+  # fSOM_man.res <- FlowSOM::BuildMST(fSOM_man.res)
+  
+  # Automatic meta clustering
+  meta_auto <- FlowSOM::MetaClustering(fSOM_auto.res$map$codes, method = "metaClustering_consensus")
+  clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
+  
+  labels_file <- paste0("Act_labels_run_", i, ".csv")
+  cluster_file <- paste0("FlowSOM_clusters_run_", i,".csv")
+  
+  write.csv(clusters_auto, file=file.path(RESULT_DIR, cluster_file), row.names = FALSE)
+  write.csv(training_labels, file=file.path(RESULT_DIR, labels_file), row.names = FALSE)
 
-# Automatic meta clustering
-meta_auto <- FlowSOM::MetaClustering(fSOM_auto.res$map$codes, method = "metaClustering_consensus")
-clusters_auto <- meta_auto[fSOM_auto.res$map$mapping[, 1]]
-
-labels_file <- paste0("Act_labels_", strength, ".csv")
-cluster_file <- paste0("FlowSOM_clusters_", strength, ".csv")
-
-write.csv(clusters_auto, file=file.path(RESULT_DIR, cluster_file), row.names = FALSE)
-write.csv(training_labels, file=file.path(RESULT_DIR, labels_file), row.names = FALSE)
-
+}

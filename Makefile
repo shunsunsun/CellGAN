@@ -2,6 +2,7 @@
 # Some defaults (TODO: Add these for all methods)
 INHIB=AKTi
 STREN=A02
+RUNS=10
 
 # Format and checks
 clean:
@@ -25,8 +26,8 @@ phenograph-cpu:
 	bash train-cpu/phenograph.sh
 
 flowsom:
-	Rscript cellgan/experiments/baselines/FlowSOM/run_flowSOM.R $(INHIB) $(STREN)
-	python -m cellgan.experiments.baselines.FlowSOM.evaluate_flowsom --inhibitor $(INHIB) --strength $(STREN)
+	Rscript cellgan/experiments/baselines/FlowSOM/run_flowSOM.R $(INHIB) $(STREN) $(RUNS)
+	python -m cellgan.experiments.baselines.FlowSOM.evaluate_flowsom --inhibitor $(INHIB) --strength $(STREN) --nruns $(RUNS)
 
 # GPU scripts
 gmm:

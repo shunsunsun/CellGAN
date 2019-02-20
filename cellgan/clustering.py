@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--exp_name", default="15_02_2019-09_28_05", help="Name of experiment to compute clustering for.")
     parser.add_argument("--cofactor", default=5)
     parser.add_argument("--sub_limit", dest="subpopulation_limit", default=30)
+    parser.add_argument("--nruns", type=int, default=10)
     args = parser.parse_args()
 
     out_dir = os.path.join(args.results_dir, args.inhibitor, args.exp_name)
@@ -44,37 +45,43 @@ def main():
     with tf.Session() as sess:
         model = load_model(out_dir=out_dir, session_obj=sess, iteration=max_iteration_saved)
 
-        noise_sample = sample_z(
-            batch_size=1,
-            num_cells_per_input=num_samples,
-            noise_size=hparams["noise_size"])
+        f_measures = list()
 
-        fetches = [model.g_sample, model.generator.gates, model.generator.logits]
-        feed_dict = {model.Z: noise_sample}
-        fake_samples, gates, logits = sess.run(fetches=fetches, feed_dict=feed_dict)
-        fake_samples = fake_samples.reshape(num_samples, hparams["num_markers"])
-        fake_sample_experts = np.argmax(gates, axis=1)
+        for run in range(args.nruns):
+            noise_sample = sample_z(
+                batch_size=1,
+                num_cells_per_input=num_samples,
+                noise_size=hparams["noise_size"])
 
-        means = list()
-        for expert in range(num_experts):
-            indices = np.flatnonzero(fake_sample_experts == expert)
-            means.append(np.mean(fake_samples[indices], axis=0))
-        means = np.array(means)
+            fetches = [model.g_sample, model.generator.gates, model.generator.logits]
+            feed_dict = {model.Z: noise_sample}
+            fake_samples, gates, logits = sess.run(fetches=fetches, feed_dict=feed_dict)
+            fake_samples = fake_samples.reshape(num_samples, hparams["num_markers"])
+            fake_sample_experts = np.argmax(gates, axis=1)
 
-        Z = linkage(means, 'ward') # Ward linkage for clustering means
-        dists = compute_l2(training_data, means)
-        closest_experts = np.argmin(dists, axis=1)
+            means = list()
+            for expert in range(num_experts):
+                indices = np.flatnonzero(fake_sample_experts == expert)
+                means.append(np.mean(fake_samples[indices], axis=0))
+            means = np.array(means)
 
-        f_scores = list()
-        for height in range(num_experts):
-            clusters = fcluster(Z, height, criterion='distance')
+            Z = linkage(means, 'ward') # Ward linkage for clustering means
+            dists = compute_l2(training_data, means)
+            closest_experts = np.argmin(dists, axis=1)
 
-            cluster_labels = list()
-            for i in range(num_samples):
-                cluster_labels.append(clusters[closest_experts[i]])
-            f_scores.append(compute_f_measure_uniformly_weighted(training_labels, cluster_labels))
+            f_scores = list()
+            for height in range(num_experts):
+                clusters = fcluster(Z, height, criterion='distance')
 
-        print(np.max(f_scores))
+                cluster_labels = list()
+                for i in range(num_samples):
+                    cluster_labels.append(clusters[closest_experts[i]])
+                f_scores.append(compute_f_measure_uniformly_weighted(training_labels, cluster_labels))
+
+            f_measures.append(max(f_scores))
+
+        print("Mean: ", np.mean(f_measures))
+        print("Std: ", np.std(f_measures))
 
 if __name__ == "__main__":
     main()
