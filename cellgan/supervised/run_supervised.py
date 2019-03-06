@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--print_every_n", default=200, type=int)
     parser.add_argument("--n_runs", default=1, type=int)
     parser.add_argument("--learning_rate", default=1e-3, type=float)
+    parser.add_argument("--num_filters", default=20, type=int)
 
     args = parser.parse_args()
 
@@ -54,7 +55,7 @@ def main():
 
         f_measures = list()
 
-        trainer = Trainer(exp_name=args.exp_name, iteration=6001, sess_obj=sess, inhibitor=args.inhibitor, lr=args.learning_rate)
+        trainer = Trainer(exp_name=args.exp_name, iteration=6001, sess_obj=sess, inhibitor=args.inhibitor, num_filters=args.num_filters,lr=args.learning_rate)
         sess.run(tf.global_variables_initializer())
         losses, mean_fs, std_fs = trainer.fit(X=test_data, y=test_labels, num_iterations=args.num_iter, print_every_n=args.print_every_n)
         preds = trainer.predict(test_data)
@@ -82,7 +83,7 @@ def main():
     print("Mean: ", np.mean(f_measures))
     print("Std: ", np.std(f_measures))
 
-    iterations = np.range(0, args.num_iter, step=args.print_every_n)
+    iterations = np.arange(0, args.num_iter, step=args.print_every_n)
     plt.figure()
     plt.plot(iterations, losses)
     plt.xlabel("Iteration Number")
