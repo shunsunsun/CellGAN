@@ -212,7 +212,7 @@ class CellGan(object):
             self.g_loss_fake = 0
 
             for i in self.d_fake:
-                self.d_loss_fake = tf.reduce_mean(
+                self.d_loss_fake += tf.reduce_mean(
                     tf.nn.sigmoid_cross_entropy_with_logits(
                         logits=self.d_fake[i],
                         labels=tf.zeros_like(self.d_fake[i])))
