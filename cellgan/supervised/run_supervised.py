@@ -91,6 +91,15 @@ def main():
     plt.savefig(os.path.join(save_dir, "loss_plot.png"))
     plt.close()
 
+
+    params = dict()
+    params["num_filters"] = args.num_filters
+    params["learning_rate"] = args.learning_rate
+    params["num_iter"] = args.num_iter
+
+    with open(os.path.join(save_dir, "Hparams.txt"), "w") as f:
+        f.write(json.dumps(params))
+
     plt.figure()
     plt.plot(iterations, mean_fs)
     plt.xlabel("Iteration Number")
