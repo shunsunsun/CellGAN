@@ -42,6 +42,9 @@ bodenmiller:
 phenograph:
 	bsub -n 8 -N -W 4:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/phenograph.sh
 
+supervised:
+	bsub -n 8 -N -W 4:30 -R "rusage[mem=2048,ngpus_excl_p=1]" ./train/supervised.sh
+
 # Updating experiments
 
 update-cellgan:
