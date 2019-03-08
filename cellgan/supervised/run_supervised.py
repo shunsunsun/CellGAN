@@ -49,13 +49,15 @@ def main():
     with open(markers_savefile, 'r') as f:
         markers_of_interest = json.load(f)
 
+    inhibtor_strength = hparams["inhibitor_strength"]
     test_data, test_labels = load_fcs(fcs_files_of_interest, markers_of_interest, args, logger=None)
 
     with tf.Session() as sess:
 
         f_measures = list()
 
-        trainer = Trainer(exp_name=args.exp_name, iteration=6001, sess_obj=sess, inhibitor=args.inhibitor, num_filters=args.num_filters,lr=args.learning_rate)
+        trainer = Trainer(exp_name=args.exp_name, iteration=6001, sess_obj=sess, inhibitor=args.inhibitor, filters=[20, 50, 100],
+            lr=args.learning_rate)
         sess.run(tf.global_variables_initializer())
         losses, mean_fs, std_fs = trainer.fit(X=test_data, y=test_labels, num_iterations=args.num_iter, print_every_n=args.print_every_n)
         preds = trainer.predict(test_data)
@@ -91,11 +93,11 @@ def main():
     plt.savefig(os.path.join(save_dir, "loss_plot.png"))
     plt.close()
 
-
     params = dict()
     params["num_filters"] = args.num_filters
     params["learning_rate"] = args.learning_rate
     params["num_iter"] = args.num_iter
+    params["inhibitor_strength"] = inhibtor_strength
 
     with open(os.path.join(save_dir, "Hparams.txt"), "w") as f:
         f.write(json.dumps(params))

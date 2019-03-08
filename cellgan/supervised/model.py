@@ -9,7 +9,8 @@ from cellgan.lib.utils import initializers, compute_outlier_weights
 from cellgan.lib.utils import compute_f_measure_uniformly_weighted
 from scipy.cluster.hierarchy import fcluster, linkage
 
-DEFAULT_HIDDEN_UNITS = 256
+DEFAULT_HIDDEN_UNITS = 512
+
 
 class Trainer(object):
     """
@@ -17,7 +18,7 @@ class Trainer(object):
     Predicts classes for real data 
     """
 
-    def __init__(self, exp_name, iteration, sess_obj, num_samples=10000, mb_size=64, num_filters=20, 
+    def __init__(self, exp_name, iteration, sess_obj, num_samples=10000, mb_size=64, filters=[20], 
         num_pooled=20, lr=1e-4, dropout_prob=0.4, beta1=0.9, beta2=0.999, epsilon=1e-8, init_method='xavier', 
         inhibitor='AKTi', sample='outlier'):
         self.exp_name = exp_name
@@ -25,7 +26,7 @@ class Trainer(object):
         self.sess_obj = sess_obj
         self.batch_size = mb_size
         self.num_samples = num_samples
-        self.num_filters = num_filters
+        self.filters = filters # Turn filters to list now
         self.num_pooled = num_pooled
         self.dropout_prob = dropout_prob
         self.inhibitor = inhibitor
@@ -45,9 +46,24 @@ class Trainer(object):
         self.opt_params["beta2"] = beta2
         self.opt_params["epsilon"] = epsilon
 
+        #self._setup_placeholders()
         self._prepare_training_data()
         self._compute_loss()
         self._solvers()
+
+    def make_dense_block(self, inputs, units, num, activation=None):
+        name = "dense_" + str(num)
+        return tf.layers.dense(inputs=inputs, units=units, activation=activation, name=name)
+
+    def make_conv_block(self, inputs, kernel_size, num_filters, num):
+        """Defines a conv block."""
+        name = "conv_" + str(num)
+        reshaped = tf.expand_dims(inputs, axis=-1)
+        conv_output = tf.layers.conv1d(inputs=reshaped, kernel_size=kernel_size, 
+            filters=num_filters, kernel_initializer=self.init(),
+            activation=tf.nn.relu, name=name)
+        reshaped_conv_output = tf.reshape(conv_output, shape=[-1, num_filters], name="reshaped_" + name)
+        return reshaped_conv_output
 
     def load_hparams(self):
         hparams_file = os.path.join(RESULTS_DIR, self.inhibitor, self.exp_name, 'Hparams.txt')
@@ -84,59 +100,44 @@ class Trainer(object):
         self.training_labels = fake_sample_experts
 
     def _setup_placeholders(self):
-        self.X = tf.placeholder(name='X', shape=[None, None, self.num_markers], dtype=tf.float32)
-        self.labels = tf.placeholder(name='labels', shape=[None, None, 1], dtype=tf.int32)
+        """Setting up placeholders."""
+        self.X = tf.placeholder(name='X', shape=[None, self.num_markers], dtype=tf.float32)
+        self.labels = tf.placeholder(name='labels', shape=[None, 1], dtype=tf.int32)
 
     def _build_graph(self, reuse=tf.AUTO_REUSE, print_shape=False):
         """Setup the computation graph """
-
         with tf.variable_scope("Trainer", reuse=reuse):
             batch_size = tf.shape(self.X)[0]
-            num_cells_per_input = tf.shape(self.X)[1]
             num_markers = int(self.X.shape[-1])
-
-            conv1_input = tf.reshape(self.X, shape=[batch_size * num_cells_per_input, num_markers, 1])
-
-            # Expected shape: (batch_size*num_cells_per_input, 1, num_filters)
-            d_conv1 = tf.layers.conv1d(
-                inputs=conv1_input,
-                filters=self.num_filters,
-                kernel_size=num_markers,
-                kernel_initializer=self.init(),
-                activation=tf.nn.relu,
-                name='d_conv1',
-            )
-
-            reshaped_dconv1 = tf.reshape(d_conv1, shape=[batch_size, num_cells_per_input, self.num_filters])
-
-            # Expected Shape: (batch_size*num_pooled, DEFAULT_HIDDEN_UNITS)
-
-            d_dense1 = tf.layers.dense(
-                inputs=reshaped_dconv1,
-                units=DEFAULT_HIDDEN_UNITS,
-                name="d_dense1",
-                activation=tf.nn.relu)
-
-            # Expected Shape: (batch_size*num_pooled, DEFAULT_HIDDEN_UNITS)
-            d_dropout1 = tf.layers.dropout(
-                inputs=d_dense1,
-                rate=self.dropout_prob,
-                name="d_dropout1")
-
-            # Expected Shape = (batch_size*num_pooled, 1)
-            self.d_dense2 = tf.layers.dense(
-                inputs=d_dropout1, units=self.num_classes, name='d_dense2', activation=None)
 
             if print_shape:
                 print()
                 print("Discriminator")
                 print("-------------")
-                print("Convolutional layer input shape: ", conv1_input.shape)
-                print("Convolutional layer output shape: ", d_conv1.shape)
-                print("Convolutional layer output reshaped: ",
-                      reshaped_dconv1.shape)
-                print("Dense Layer 1 output shape: ", d_dense1.shape)
-                print("Dense Layer 2 output shape: ", self.d_dense2.shape)
+
+            # Conv Block
+            conv_out = self.X
+            kernel_size = num_markers
+            for i, num_filters in enumerate(self.filters):
+                conv_out = self.make_conv_block(inputs=conv_out, kernel_size=kernel_size, num_filters=num_filters, num=i+1)
+                if print_shape:
+                    print("Conv layer " + str(i+1) + ": ", conv_out.shape)
+                kernel_size = num_filters
+
+            layer_sizes = [DEFAULT_HIDDEN_UNITS, 256]
+
+            # Dense layer
+            inputs = conv_out
+            for i, layer_size in enumerate(layer_sizes):
+                inputs = self.make_dense_block(inputs=inputs, units=layer_size, num=i+1, activation=tf.nn.relu)
+                if print_shape:
+                    print("Dense layer " + str(i+1) + ": ", inputs.shape)
+
+            self.dense_last = tf.layers.dense(
+                inputs=inputs, units=self.num_classes, name='dense_last', activation=None)
+
+            if print_shape:
+                print("Dense final output shape: ", self.dense_last.shape)
                 print()
 
     def _compute_loss(self):
@@ -145,7 +146,7 @@ class Trainer(object):
         self._build_graph()
 
         one_hot_labels = tf.one_hot(self.labels, depth=self.num_classes, axis=-1)
-        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.d_dense2, labels=one_hot_labels))
+        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.dense_last, labels=one_hot_labels))
 
     def _solvers(self):
         """Defines the optimizer to be used."""
@@ -206,20 +207,21 @@ class Trainer(object):
                 
                 train_batch, indices = generate_subset(
                     inputs=self.training_data, 
-                    num_cells_per_input=self.nc_input, 
+                    num_cells_per_input=1, 
                     batch_size=self.batch_size, 
                     weights=outlier_scores, 
                     return_indices=True)
             else:
                 train_batch, indices = generate_subset(
                     inputs=self.training_data, 
-                    num_cells_per_input=self.nc_input, 
+                    num_cells_per_input=1, 
                     batch_size=self.batch_size, 
                     weights=None, 
                     return_indices=True)
 
+            train_batch = np.reshape(train_batch, (self.batch_size, -1))
             train_batch_labels = self.training_labels[indices]
-            train_batch_labels = np.reshape(train_batch_labels, (self.batch_size, self.nc_input, -1))
+            train_batch_labels = np.reshape(train_batch_labels, (self.batch_size, 1))
             feed_dict = {self.X: train_batch, self.labels: train_batch_labels}
 
             loss, _ = self.sess_obj.run(fetches=fetches, feed_dict=feed_dict)
@@ -236,14 +238,11 @@ class Trainer(object):
 
     def predict(self, X):
         """Generate predictions for given sample X."""
-        if len(X.shape) == 2:
-            X = X[np.newaxis, :, :]
 
-        fetches = self.d_dense2
+        fetches = self.dense_last
         feed_dict = {self.X: X}
 
         logits = self.sess_obj.run(fetches, feed_dict)
-        logits = np.squeeze(logits, axis=0)
         preds = np.argmax(logits, axis=1)
 
         return preds
@@ -255,3 +254,6 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
         model = Trainer(exp_name, iteration, sess_obj=sess)
+        model._build_graph(print_shape=True)
+        model._prepare_training_data()
+        model.predict(self.training_data)

@@ -25,6 +25,9 @@ bodenmiller-cpu:
 phenograph-cpu:
 	bash train-cpu/phenograph.sh
 
+supervised-cpu:
+	bash train-cpu/supervised.sh
+
 flowsom:
 	Rscript cellgan/experiments/baselines/FlowSOM/run_flowSOM.R $(INHIB) $(STREN) $(RUNS)
 	python -m cellgan.experiments.baselines.FlowSOM.evaluate_flowsom --inhibitor $(INHIB) --strength $(STREN) --nruns $(RUNS)
