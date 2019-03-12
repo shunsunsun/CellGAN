@@ -273,6 +273,22 @@ def compute_closest(x, y, metric='l2'):
     return smallest_dist
 
 
+def compute_reproduce_error(real_data, fake_data, measure='l2'):
+    dists = compute_l2(real_data, fake_data)
+    cols_to_consider = np.arange(len(real_data))
+    #error = 0
+
+    min_dists = np.min(dists, axis=1)
+    error = np.sum(min_dists)
+
+    # for i in range(len(real_data)):
+    #     sample = real_data[i]
+    #     min_val = np.min(dists[cols_to_consider])
+    #     cols_to_consider = np.delete(cols_to_consider, np.argmin(dists[cols_to_consider]))
+    #     error += min_val
+
+    return error
+
 def write_hparams_to_file(out_dir, hparams):
     """
     Writes hyperparameters used in experiment to specified output directory.

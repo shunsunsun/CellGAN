@@ -12,7 +12,7 @@ import umap
 
 from cellgan.lib.data_utils import load_fcs, get_fcs_filenames
 from cellgan.lib.utils import get_filters, get_num_pooled, write_hparams_to_file
-from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights, build_logger
+from cellgan.lib.utils import generate_subset, sample_z, compute_outlier_weights, build_logger, compute_reproduce_error
 from cellgan.lib.utils import compute_frequency, assign_expert_to_subpopulation, compute_learnt_subpopulation_weights
 from cellgan.model.model import CellGan
 from cellgan.lib.plotting import *
@@ -324,6 +324,9 @@ def main():
     discriminator_loss = list()
     generator_loss = list()
 
+    iters = list()
+    errors = list()
+
     # Fit PCA object
     pca = PCA(n_components=2)
     pca = pca.fit(training_data)
@@ -440,6 +443,15 @@ def main():
                 real_samples = real_samples.reshape(num_samples, len(markers_of_interest))
                 indices = np.reshape(indices, real_samples.shape[0])
                 real_sample_subs = training_labels[indices]
+
+                # Compute reconstruction error
+                error = compute_reproduce_error(real_samples, fake_samples)
+                iters.append(iteration)
+                errors.append(error)
+
+                cellgan_logger.info("Saving the convergence plot...")
+                plot_convergence(out_dir=output_dir, iters=iters, error=errors)
+                cellgan_logger.info("Convergence plot saved. \n")
 
                 # Compute expert assignments based on KS test
                 expert_assignments = \

@@ -6,6 +6,9 @@ from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from sklearn.metrics import mean_squared_error
+
+from cellgan.lib.utils import compute_l2
 
 
 def plotter(out_dir, method, transformer, real_subset, real_subset_labels, 
@@ -337,6 +340,15 @@ def plot_loss(out_dir, disc_loss, gen_loss):
     plt.plot(range(len(disc_loss)), disc_loss, 'r', label='Discriminator Loss')
     plt.plot(range(len(gen_loss)), gen_loss, 'b', label='Generator Loss')
     plt.xlabel('Number of Iterations')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_convergence(out_dir, iters, error):
+    filename = os.path.join(out_dir, 'convergence_plot.pdf')
+    plt.plot(iters, error, label='Reconstruction Error')
+    plt.xlabel('Number of iterations')
     plt.ylabel('Loss')
     plt.legend()
     plt.savefig(filename)
