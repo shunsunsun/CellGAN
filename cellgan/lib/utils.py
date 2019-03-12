@@ -287,7 +287,7 @@ def compute_reproduce_error(real_data, fake_data, measure='l2'):
     #     cols_to_consider = np.delete(cols_to_consider, np.argmin(dists[cols_to_consider]))
     #     error += min_val
 
-    return error
+    return error/len(real_data)
 
 def write_hparams_to_file(out_dir, hparams):
     """
