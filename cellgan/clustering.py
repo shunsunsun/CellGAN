@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--exp_name", default="15_02_2019-09_28_05", help="Name of experiment to compute clustering for.")
     parser.add_argument("--cofactor", default=5)
     parser.add_argument("--sub_limit", dest="subpopulation_limit", default=30)
+    parser.add_argument("--mode", dest="mode", default="normal")
     parser.add_argument("--nruns", type=int, default=10)
     args = parser.parse_args()
 
@@ -39,6 +40,7 @@ def main():
 
     num_experts = hparams["num_experts"]
     max_iteration_saved = max([int(number) for number in os.listdir(out_dir) if number[0].isdigit()])
+    max_iteration_saved = 6001 # Hack
     training_data, training_labels = load_fcs(fcs_files_of_interest, markers_of_interest, args)
     num_samples = training_data.shape[0]
 
@@ -76,7 +78,11 @@ def main():
                 cluster_labels = list()
                 for i in range(num_samples):
                     cluster_labels.append(clusters[closest_experts[i]])
-                f_scores.append(compute_f_measure_uniformly_weighted(training_labels, cluster_labels))
+
+                if args.mode == "normal":
+                    f_scores.append(compute_f_measure(training_labels, cluster_labels))
+                elif args.mode == "uniform":
+                    f_scores.append(compute_f_measure_uniformly_weighted(training_labels, cluster_labels))
 
             f_measures.append(max(f_scores))
 
