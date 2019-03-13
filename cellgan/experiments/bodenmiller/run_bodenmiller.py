@@ -445,7 +445,7 @@ def main():
                 real_sample_subs = training_labels[indices]
 
                 # Compute reconstruction error
-                error = compute_reproduce_error(real_samples, fake_samples)
+                error = np.log(compute_reproduce_error(real_samples, fake_samples))
                 iters.append(iteration)
                 errors.append(error)
 
