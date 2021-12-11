@@ -1,5 +1,7 @@
 # CellGAN
 
+NOTE: This work is outdated, please refer to https://github.com/andkopf/MoESimVAE for the latest results.
+
 CellGAN is a Generative Adversarial Network that aims to learn the cellular heterogeneity from flow cytometry data in an interpretable manner and use it for defining subpopulations. 
 
 ## Datasets 
